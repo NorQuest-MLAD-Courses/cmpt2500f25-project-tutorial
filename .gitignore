@@ -207,4 +207,4 @@ marimo/_lsp/
 __marimo__/
 
 # exclude Python virtual environment (venv)
-churn_env/ 
+churn_env */ 
