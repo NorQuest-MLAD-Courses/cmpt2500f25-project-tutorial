@@ -205,3 +205,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# exclude Python virtual environment (venv)
+churn_env/ 
