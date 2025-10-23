@@ -208,3 +208,4 @@ __marimo__/
 
 # exclude Python virtual environment (venv)
 churn_env */ 
+/hf_raw

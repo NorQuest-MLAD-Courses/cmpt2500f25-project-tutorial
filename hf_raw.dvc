@@ -1,0 +1,6 @@
+outs:
+- md5: 653d929645f22a969d27351f15d86acc.dir
+  size: 2560
+  nfiles: 4
+  hash: md5
+  path: hf_raw
