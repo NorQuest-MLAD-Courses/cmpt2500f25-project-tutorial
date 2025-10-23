@@ -1,0 +1,14 @@
+artifact_uri: file:///workspaces/cmpt2500f25-project-tutorial/mlruns/320217314926095902/946943a7f7d64dc2a1cffe7031e37074/artifacts
+end_time: 1761258486021
+entry_point_name: ''
+experiment_id: '320217314926095902'
+lifecycle_stage: active
+run_id: 946943a7f7d64dc2a1cffe7031e37074
+run_name: config-smoke
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761258486008
+status: 3
+tags: []
+user_id: codespace

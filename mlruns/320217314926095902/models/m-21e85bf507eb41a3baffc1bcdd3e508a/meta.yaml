@@ -1,0 +1,10 @@
+artifact_location: file:///workspaces/cmpt2500f25-project-tutorial/mlruns/320217314926095902/models/m-21e85bf507eb41a3baffc1bcdd3e508a/artifacts
+creation_timestamp: 1761259381680
+experiment_id: '320217314926095902'
+last_updated_timestamp: 1761259386048
+model_id: m-21e85bf507eb41a3baffc1bcdd3e508a
+model_type: null
+name: model
+source_run_id: 515bf82fa478494a96d2d7feed790f89
+status: 2
+status_message: null

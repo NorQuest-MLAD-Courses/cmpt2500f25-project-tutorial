@@ -1,0 +1,14 @@
+artifact_uri: file:///workspaces/cmpt2500f25-project-tutorial/mlruns/320217314926095902/26d99c3f29ad4ce28f4c3f8ce416fd13/artifacts
+end_time: 1761259584672
+entry_point_name: ''
+experiment_id: '320217314926095902'
+lifecycle_stage: active
+run_id: 26d99c3f29ad4ce28f4c3f8ce416fd13
+run_name: ada_n25
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761259580792
+status: 3
+tags: []
+user_id: codespace

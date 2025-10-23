@@ -1,0 +1,22 @@
+artifact_path: file:///workspaces/cmpt2500f25-project-tutorial/mlruns/320217314926095902/models/m-f675022d9b2b4eb18cbc988df3d33bbb/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.12.1
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.2
+mlflow_version: 3.5.0
+model_id: m-f675022d9b2b4eb18cbc988df3d33bbb
+model_size_bytes: 15146
+model_uuid: m-f675022d9b2b4eb18cbc988df3d33bbb
+prompts: null
+run_id: 8a0ed266d0ba496e8d24211a55f949f2
+utc_time_created: '2025-10-23 22:48:19.328998'

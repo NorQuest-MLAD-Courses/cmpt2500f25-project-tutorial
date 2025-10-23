@@ -1,0 +1,14 @@
+artifact_uri: file:///workspaces/cmpt2500f25-project-tutorial/mlruns/639334100873367372/c0c464ac919e4604ad3bd70a9b17f63c/artifacts
+end_time: 1761257957639
+entry_point_name: ''
+experiment_id: '639334100873367372'
+lifecycle_stage: active
+run_id: c0c464ac919e4604ad3bd70a9b17f63c
+run_name: hello-mlflow
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761257957625
+status: 3
+tags: []
+user_id: codespace

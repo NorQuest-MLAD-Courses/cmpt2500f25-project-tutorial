@@ -1,0 +1,28 @@
+artifact_path: file:///workspaces/cmpt2500f25-project-tutorial/mlruns/320217314926095902/models/m-03b832aeeff14c82b0c235bb6be59e67/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.12.1
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.2
+is_signature_from_type_hint: false
+mlflow_version: 3.5.0
+model_id: m-03b832aeeff14c82b0c235bb6be59e67
+model_size_bytes: 15094
+model_uuid: m-03b832aeeff14c82b0c235bb6be59e67
+prompts: null
+run_id: 26d99c3f29ad4ce28f4c3f8ce416fd13
+signature:
+  inputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float64", "shape": [-1, 3]}}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "int64", "shape": [-1]}}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2025-10-23 22:46:20.918548'
