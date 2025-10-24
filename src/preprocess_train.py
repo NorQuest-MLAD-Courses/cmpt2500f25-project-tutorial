@@ -10,7 +10,7 @@ def process_training_data(X, y):
     num_cols = ["tenure", 'MonthlyCharges', 'TotalCharges']
     
     scaler = StandardScaler()
-    X_train[num_cols] = scaler.fit(X_train[num_cols])    
+    scaler.fit(X_train[num_cols])    
     
     X_train[num_cols] = scaler.transform(X_train[num_cols])
     X_test[num_cols] = scaler.transform(X_test[num_cols])
