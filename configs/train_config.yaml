@@ -1,1 +1,1 @@
-model_class: AdaBoostClassifier
+n_estimators: 25

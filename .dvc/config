@@ -1,0 +1,4 @@
+[core]
+    remote = cmpt2500f25-project-tutorial-hf
+['remote "cmpt2500f25-project-tutorial-hf"']
+    url = https://huggingface.co/datasets/NorQuest-MLAD-Courses/cmpt2500f25-project-tutorial
