@@ -139,7 +139,6 @@ outputs/*.png
 outputs/*.jpg
 outputs/*.pdf
 logs/
-*.log
 
 # Exclude example/sample data (keep directory structure)
 !data/raw/.gitkeep
@@ -149,3 +148,22 @@ logs/
 
 # Development artifacts (don't commit)
 scratch/
+
+# Temporary config files (allow local overrides without committing)
+configs/*.local.yaml
+configs/*.override.yaml
+configs/*_temp.yaml
+
+# Test outputs
+tests/outputs/
+tests/temp/
+test_results/
+
+# Profiling outputs
+*.prof
+*.lprof
+
+# ============================================================
+# Note: DVC and MLflow sections will be added later
+# when we implement those features in subsequent labs
+# ============================================================
