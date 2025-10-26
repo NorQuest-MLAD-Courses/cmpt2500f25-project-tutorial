@@ -1,4 +1,4 @@
-# Telecom Customer Churn Prediction
+# CMPT 2500 Project Tutorial: Telecom Customer Churn Prediction
 
 A production-ready machine learning project to predict customer churn in the telecommunications industry. This project demonstrates industry best practices including modular code organization, CLI interfaces, hyperparameter tuning, experiment tracking, and data versioning.
 
@@ -11,6 +11,7 @@ A production-ready machine learning project to predict customer churn in the tel
 Customer churn prediction helps telecom companies identify customers who are likely to discontinue their services. By predicting churn, companies can take proactive measures to retain customers, reducing the cost of acquiring new customers (which is typically 5 times more expensive than retaining existing ones).
 
 This project showcases a complete ML workflow from data preprocessing to model deployment, incorporating:
+
 - 🏗️ **Modular architecture** with separation of concerns
 - 🖥️ **CLI interfaces** for all major operations
 - 🔧 **Hyperparameter tuning** for optimal model performance
@@ -20,8 +21,8 @@ This project showcases a complete ML workflow from data preprocessing to model d
 
 ## Project Structure
 
-```
-telecom-churn-prediction/
+```output
+cmpt2500f25-project-tutorial/
 ├── .venv/                      # Virtual environment (not in Git)
 ├── configs/                    # YAML configuration files
 │   ├── train_config.yaml
@@ -64,16 +65,20 @@ telecom-churn-prediction/
 
 The dataset includes the following features:
 
-**Demographics:**
+**Demographics**:
+
 - Gender, Senior Citizen status, Partner, Dependents
 
-**Services:**
+**Services**:
+
 - Phone Service, Multiple Lines, Internet Service, Online Security, Online Backup, Device Protection, Tech Support, Streaming TV, Streaming Movies
 
-**Account Information:**
+**Account Information**:
+
 - Tenure, Contract type, Payment method, Paperless billing, Monthly charges, Total charges
 
-**Target:**
+**Target**:
+
 - Churn (Yes/No) - Binary classification
 
 ## Models Implemented
@@ -86,6 +91,7 @@ The dataset includes the following features:
 6. **Voting Classifier** - Ensemble combining multiple models
 
 All models support:
+
 - ⚙️ **Hyperparameter tuning** with GridSearchCV
 - 📊 **Cross-validation** for robust evaluation
 - 💾 **Model persistence** with joblib
@@ -99,17 +105,17 @@ All models support:
 - Git
 - pip
 
-**Note:** Python 3.13 is available but some packages may not be fully compatible. Stick with Python 3.12.x for maximum compatibility.
+**Note**: Python 3.13 is available but some packages may not be fully compatible. Stick with Python 3.12.x for maximum compatibility.
 
-### Setup Steps
+1. **Clone the repository**:
 
-1. **Clone the repository:**
    ```bash
-   git clone <repository-url>
-   cd telecom-churn-prediction
+   git clone https://github.com/NorQuest-MLAD-Courses/cmpt2500f25-project-tutorial.git
+   cd cmpt2500f25-project-tutorial
    ```
 
-2. **Create virtual environment:**
+2. **Create virtual environment**:
+
    ```bash
    # Create virtual environment
    python -m venv .venv
@@ -120,13 +126,15 @@ All models support:
    .venv\Scripts\activate     # Windows
    ```
 
-3. **Install dependencies:**
+3. **Install dependencies**:
+
    ```bash
    pip install --upgrade pip
    pip install -r requirements.txt
    ```
 
-4. **Verify installation:**
+4. **Verify installation**:
+
    ```bash
    python -c "import sklearn; import mlflow; import dvc; print('✅ All packages installed!')"
    ```
@@ -171,7 +179,8 @@ python -m src.preprocess \
 python -m src.preprocess --help
 ```
 
-**What it does:**
+**What it does**:
+
 - Loads raw data from CSV
 - Handles missing values
 - Encodes categorical features
@@ -179,7 +188,8 @@ python -m src.preprocess --help
 - Splits into train/test sets
 - Saves preprocessing pipeline for consistent predictions
 
-**Output files:**
+**Output files**:
+
 - `preprocessed_data.npy` - Train/test data
 - `preprocessing_pipeline.pkl` - Sklearn pipeline
 - `label_encoder.pkl` - Target encoder
@@ -213,7 +223,8 @@ python -m src.train \
 python -m src.train --help
 ```
 
-**Available models:**
+**Available models**:
+
 - `logistic_regression`
 - `random_forest`
 - `decision_tree`
@@ -222,7 +233,7 @@ python -m src.train --help
 - `voting_classifier`
 - `all` (trains all models)
 
-**Hyperparameter Tuning:**
+**Hyperparameter Tuning**:
 When `--tune` flag is used, GridSearchCV performs exhaustive search over parameter grid with 5-fold cross-validation. This significantly improves model performance but takes longer.
 
 ### Making Predictions
@@ -274,7 +285,8 @@ python -m src.evaluate \
 python -m src.evaluate --help
 ```
 
-**Metrics calculated:**
+**Metrics calculated**:
+
 - Accuracy, Precision, Recall, F1-Score
 - ROC-AUC (if model supports probabilities)
 - Confusion Matrix
@@ -287,6 +299,7 @@ The project uses YAML files for flexible configuration management.
 ### Configuration Files
 
 **`configs/train_config.yaml`** - Training settings:
+
 ```yaml
 model:
   type: random_forest
@@ -300,6 +313,7 @@ training:
 ```
 
 **`configs/preprocess_config.yaml`** - Preprocessing settings:
+
 ```yaml
 data:
   filename: WA_Fn-UseC_-Telco-Customer-Churn.csv
@@ -340,13 +354,13 @@ Typical performance metrics (with hyperparameter tuning):
 | AdaBoost | 79.7% | 65.3% | 54.8% | 59.6% | 83.8% |
 | Decision Tree | 73.5% | 53.2% | 48.9% | 50.9% | 71.2% |
 
-**Note:** Performance varies based on data splits and hyperparameter settings.
+**Note**: Performance varies based on data splits and hyperparameter settings.
 
 ## Key Insights
 
 Based on the analysis of 7,043 telecom customers:
 
-1. **Contract Type Impact**: 
+1. **Contract Type Impact**:
    - Month-to-month contracts show 42% churn rate
    - One-year contracts: 11% churn rate
    - Two-year contracts: 3% churn rate
@@ -374,38 +388,46 @@ Based on the analysis of 7,043 telecom customers:
 
 ## Technology Stack
 
-**Core ML:**
+**Core ML**:
+
 - Python 3.12
 - scikit-learn 1.7.2
 - NumPy 2.3.4
 - Pandas 2.3.3
 
-**Advanced Models:**
+**Advanced Models**:
+
 - XGBoost 3.1.1
 - CatBoost 1.2.8
 
-**Visualization:**
+**Visualization**:
+
 - Matplotlib 3.10.7
 - Seaborn 0.13.2
 - Plotly 6.3.1
 
-**Configuration:**
+**Configuration**:
+
 - PyYAML 6.0.3
 
-**Testing:**
+**Testing**:
+
 - pytest 8.4.2
 - pytest-cov 7.0.0
 
-**Development:**
+**Development**:
+
 - Jupyter 1.1.1
 
-**Coming Soon (Lab 02 - Part 2):**
+**Coming Soon (Lab 02 - Part 2)**:
+
 - DVC 3.63.0 (data versioning)
 - MLflow 3.5.1 (experiment tracking)
 
 ## Development Workflow
 
 ### 1. Experimentation Phase
+
 ```bash
 # Use notebooks for exploration
 jupyter notebook notebooks/
@@ -417,6 +439,7 @@ jupyter notebook notebooks/
 ```
 
 ### 2. Development Phase
+
 ```bash
 # Convert notebook code to modules
 # - Extract preprocessing → src/preprocess.py
@@ -429,6 +452,7 @@ python -m src.train --data data/processed/preprocessed_data.npy --model random_f
 ```
 
 ### 3. Optimization Phase
+
 ```bash
 # Enable hyperparameter tuning
 python -m src.train --data data/processed/preprocessed_data.npy --model all --tune
@@ -439,6 +463,7 @@ python -m src.evaluate --model models/model2.pkl --data data/processed/preproces
 ```
 
 ### 4. Testing Phase
+
 ```bash
 # Run unit tests
 pytest tests/
@@ -448,6 +473,7 @@ pytest --cov=src tests/
 ```
 
 ### 5. Version Control
+
 ```bash
 # Commit changes
 git add .
@@ -455,7 +481,7 @@ git commit -m "feat: Add optimized models with tuning"
 git push
 ```
 
-## Testing
+## Test
 
 ```bash
 # Run all tests
@@ -474,6 +500,7 @@ pytest -v tests/
 ## Project Roadmap
 
 ### ✅ Completed (Lab 01)
+
 - Modular code organization
 - Data preprocessing functions
 - Model training functions
@@ -481,6 +508,7 @@ pytest -v tests/
 - Basic documentation
 
 ### ✅ Completed (Lab 02)
+
 - Virtual environment setup
 - Dependency management
 - CLI interfaces (argparse)
@@ -490,17 +518,20 @@ pytest -v tests/
 - Unit testing basics
 
 ### 🔜 Upcoming (Lab 02 - Part 2)
+
 - DVC setup with DagsHub
 - MLflow integration
 - Comprehensive pytest suite
 
 ### 🔜 Upcoming (Lab 03)
+
 - REST API with Flask/FastAPI
 - API documentation (Swagger)
 - Request/response validation
 - API testing
 
 ### 🔜 Future (Lab 04-06)
+
 - Docker containerization
 - Cloud deployment (AWS/GCP/Azure)
 - CI/CD pipeline
@@ -536,14 +567,16 @@ pytest -v tests/
 
 ### Virtual Environment Issues
 
-**Problem:** `command not found: python`
+**Problem**: `command not found: python`
+
 ```bash
 # Solution: Activate virtual environment
 source .venv/bin/activate  # Mac/Linux
 .venv\Scripts\activate     # Windows
 ```
 
-**Problem:** Package import errors
+**Problem**: Package import errors
+
 ```bash
 # Solution: Reinstall requirements
 pip install --force-reinstall -r requirements.txt
@@ -551,7 +584,8 @@ pip install --force-reinstall -r requirements.txt
 
 ### Module Import Errors
 
-**Problem:** `ModuleNotFoundError: No module named 'src'`
+**Problem**: `ModuleNotFoundError: No module named 'src'`
+
 ```bash
 # Solution: Run from project root with -m flag
 cd /path/to/project
@@ -571,12 +605,13 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Contact
 
 For questions, issues, or contributions:
+
 - Create an issue on GitHub
 - Email: [your-email]
 - Office Hours: [schedule]
 
 ---
 
-**Last Updated:** October 2024  
-**Version:** 2.0.0 (Lab 02 Complete)  
-**Python Version:** 3.12.12
+**Last Updated**: October 2024  
+**Version**: 2.0.0 (Lab 02 Complete)  
+**Python Version**: 3.12.12
