@@ -3080,6 +3080,1314 @@ python -m src.train --data data.npy --model all --tune
 
 ---
 
+## Part 9: Automated Testing with pytest
+
+### Testing Overview
+
+This is the final piece of your production-ready ML project! In this section, you'll add **automated testing** to ensure your code is reliable, maintainable, and bug-free.
+
+Testing is a critical part of software engineering that's often overlooked in ML projects. However, in production environments, untested code is a major risk. This lab will teach you industry-standard testing practices using **pytest**, the most popular Python testing framework.
+
+#### What You've Built So Far
+
+Lab 02 has been an intensive journey:
+
+- ✅ **Part 1-2**: Virtual environments & dependency management
+- ✅ **Part 3-4**: CLI interfaces & code enhancements
+- ✅ **Part 5-6**: YAML configuration & best practices
+- ✅ **Part 7**: DVC for data version control
+- ✅ **Part 8**: MLflow for experiment tracking
+- 🎯 **Part 9**: Automated testing (You are here!)
+
+#### Testing Learning Objectives
+
+By the end of this part, you will:
+
+1. **Understand testing fundamentals** - Why test, what to test, how to test
+2. **Master pytest** - Write and run unit tests, integration tests, and parametrized tests
+3. **Create test fixtures** - Reusable test data and configurations
+4. **Measure code coverage** - Ensure your tests cover critical code paths
+5. **Test ML pipelines** - Special considerations for testing ML code
+6. **Mock external dependencies** - Test without hitting databases or APIs
+
+#### Why Testing Matters
+
+**The cost of bugs in production**:
+
+```text
+Development:   Bug costs $1 to fix
+Testing:       Bug costs $10 to fix
+Production:    Bug costs $100 to fix
+```
+
+**Real-world ML disasters caused by lack of testing**:
+
+- Amazon's AI recruiting tool showed bias against women (insufficient testing for fairness)
+- Knight Capital lost $440 million in 45 minutes (deployment without proper testing)
+- Mars Climate Orbiter crashed ($125M loss) due to unit conversion error
+
+**Testing benefits**:
+
+- ✅ Catch bugs before production
+- ✅ Refactor confidently
+- ✅ Document expected behavior
+- ✅ Enable continuous integration/deployment
+- ✅ Improve code quality
+
+---
+
+### Part 9.1: Understanding Testing Fundamentals
+
+#### Types of Tests
+
+| Test Type | What it Tests | Example | Speed | Coverage |
+|-----------|---------------|---------|-------|----------|
+| **Unit Tests** | Individual functions | `test_load_data()` tests just `load_data()` | ⚡ Fast | Narrow |
+| **Integration Tests** | Multiple components | `test_preprocessing_pipeline()` tests full flow | 🐢 Slower | Broad |
+| **End-to-End Tests** | Complete workflows | CSV → Model → Predictions | 🐌 Slowest | Complete |
+
+#### The Testing Pyramid
+
+```text
+         ╱╲
+        ╱  ╲     E2E Tests (Few, Slow, High-Level)
+       ╱────╲
+      ╱      ╲   Integration Tests (Some, Medium)
+     ╱────────╲
+    ╱          ╲ Unit Tests (Many, Fast, Low-Level)
+   ──────────────
+```
+
+**Best practice**: Write mostly unit tests, some integration tests, and few E2E tests.
+
+#### What to Test in ML Projects
+
+**Always test**:
+
+- ✅ Data loading and validation
+- ✅ Preprocessing functions
+- ✅ Model training (that it completes without errors)
+- ✅ Prediction functions
+- ✅ Evaluation metrics
+- ✅ Edge cases (empty data, missing values, wrong types)
+
+**Don't test**:
+
+- ❌ Third-party library internals (scikit-learn already tests their code)
+- ❌ Exact model accuracy (can vary, test that it's in a reasonable range)
+- ❌ Hyperparameter tuning results (non-deterministic, too slow)
+
+#### Test-Driven Development (TDD)
+
+**TDD Cycle** (optional, but recommended):
+
+1. **Red**: Write a failing test
+2. **Green**: Write minimal code to make it pass
+3. **Refactor**: Improve the code while keeping tests passing
+
+---
+
+### Part 9.2: Setting Up pytest
+
+#### Install pytest
+
+```bash
+# Activate your virtual environment
+source .venv/bin/activate
+
+# Install pytest and pytest-cov
+pip install pytest==8.4.2 pytest-cov==7.0.0
+
+# Verify installation
+pytest --version
+```
+
+**Expected output**:
+
+```output
+pytest 8.4.2
+```
+
+#### Create pytest.ini Configuration
+
+Create a `pytest.ini` file in your project root:
+
+```bash
+touch pytest.ini
+```
+
+Add this configuration:
+
+```ini
+# pytest.ini - pytest Configuration
+
+[pytest]
+# Test discovery patterns
+python_files = test_*.py
+python_classes = Test*
+python_functions = test_*
+
+# Directories to search for tests
+testpaths = tests
+
+# Additional command line options
+addopts =
+    -v
+    --strict-markers
+    --tb=short
+    --disable-warnings
+    -ra
+
+# Markers for organizing tests
+markers =
+    unit: Unit tests for individual functions
+    integration: Integration tests for workflows
+    slow: Tests that take longer to run
+    cli: Tests for command-line interfaces
+
+# Minimum Python version
+minversion = 3.8
+
+# Output options
+console_output_style = progress
+
+# Warnings
+filterwarnings =
+    ignore::DeprecationWarning
+```
+
+**What this does**:
+
+- `python_files = test_*.py`: Only run files starting with `test_`
+- `testpaths = tests`: Look for tests in `tests/` directory
+- `-v`: Verbose output
+- `markers`: Custom tags for organizing tests
+
+#### Create Tests Directory Structure
+
+```bash
+mkdir -p tests
+touch tests/__init__.py
+touch tests/conftest.py
+```
+
+Your project now looks like:
+
+```output
+your-project/
+├── tests/
+│   ├── __init__.py
+│   └── conftest.py
+├── pytest.ini
+└── src/
+    ├── preprocess.py
+    ├── train.py
+    ├── predict.py
+    └── evaluate.py
+```
+
+---
+
+### Part 9.3: Writing Your First Test
+
+#### Create test_preprocess.py
+
+Create `tests/test_preprocess.py`:
+
+```python
+"""
+Tests for src/preprocess.py module.
+"""
+
+import pandas as pd
+import pytest
+
+from src.preprocess import load_data
+
+
+def test_load_data_success(tmp_path):
+    """Test successful data loading from CSV."""
+    # Create a temporary CSV file
+    csv_file = tmp_path / "test_data.csv"
+    csv_file.write_text("col1,col2\\n1,2\\n3,4\\n")
+    
+    # Load data
+    df = load_data(str(csv_file))
+    
+    # Assertions
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 2
+    assert list(df.columns) == ['col1', 'col2']
+
+
+def test_load_data_file_not_found():
+    """Test error handling for missing file."""
+    with pytest.raises(FileNotFoundError):
+        load_data("nonexistent_file.csv")
+```
+
+#### Run Your First Test
+
+```bash
+pytest tests/test_preprocess.py -v
+```
+
+**Expected output**:
+
+```output
+tests/test_preprocess.py::test_load_data_success PASSED           [ 50%]
+tests/test_preprocess.py::test_load_data_file_not_found PASSED   [100%]
+
+==================== 2 passed in 0.05s ====================
+```
+
+**Congratulations! You just wrote and ran your first tests!** 🎉
+
+---
+
+### Part 9.4: Understanding Test Structure
+
+#### Anatomy of a Test Function
+
+```python
+def test_function_name():              # 1. Name starts with 'test_'
+    """Docstring explaining what we test."""  # 2. Documentation
+    
+    # 3. Arrange: Set up test data
+    X = np.array([[1, 2], [3, 4]])
+    y = np.array([0, 1])
+    
+    # 4. Act: Execute the code being tested
+    model = train_model(X, y)
+    
+    # 5. Assert: Verify the results
+    assert model is not None
+    assert hasattr(model, 'predict')
+```
+
+**The 3 A's of Testing** (AAA Pattern):
+
+1. **Arrange**: Set up test data and preconditions
+2. **Act**: Execute the function/code being tested
+3. **Assert**: Check that results match expectations
+
+#### Common Assertions
+
+```python
+# Equality
+assert x == y
+assert x != y
+
+# Identity
+assert x is None
+assert x is not None
+
+# Membership
+assert 'key' in dictionary
+assert item in list
+
+# Type checking
+assert isinstance(obj, ClassName)
+
+# Comparisons
+assert x > y
+assert x >= y
+assert x < y
+assert x <= y
+
+# Boolean
+assert condition
+assert not condition
+
+# Exceptions
+with pytest.raises(ValueError):
+    function_that_should_raise()
+
+# Floating point (with tolerance)
+assert abs(x - y) < 0.0001
+# or
+import numpy as np
+np.testing.assert_almost_equal(x, y, decimal=4)
+```
+
+---
+
+### Part 9.5: Creating Test Fixtures
+
+#### What are Fixtures?
+
+**Fixtures** are reusable test data or configurations. Instead of creating the same test data in every test, you create it once as a fixture.
+
+#### Create conftest.py with Fixtures
+
+Edit `tests/conftest.py`:
+
+```python
+"""
+pytest fixtures for test suite.
+"""
+
+import numpy as np
+import pandas as pd
+import pytest
+
+
+@pytest.fixture
+def sample_data():
+    """
+    Create small sample dataset for testing.
+    """
+    data = {
+        'customerID': ['C001', 'C002', 'C003'],
+        'gender': ['Male', 'Female', 'Male'],
+        'tenure': [12, 24, 36],
+        'MonthlyCharges': [50.5, 70.25, 25.0],
+        'Churn': ['No', 'No', 'Yes']
+    }
+    return pd.DataFrame(data)
+
+
+@pytest.fixture
+def processed_data():
+    """
+    Create preprocessed training data.
+    """
+    np.random.seed(42)
+    
+    X_train = np.random.randn(80, 15)
+    X_test = np.random.randn(20, 15)
+    y_train = np.random.choice(['Yes', 'No'], 80)
+    y_test = np.random.choice(['Yes', 'No'], 20)
+    
+    return {
+        'X_train': X_train,
+        'X_test': X_test,
+        'y_train': y_train,
+        'y_test': y_test
+    }
+
+
+@pytest.fixture
+def temp_output_dir(tmp_path):
+    """
+    Create temporary output directory.
+    """
+    output_dir = tmp_path / "outputs"
+    output_dir.mkdir()
+    return output_dir
+```
+
+### Using Fixtures in Tests
+
+```python
+def test_with_fixture(sample_data):
+    """Test using the sample_data fixture."""
+    # sample_data is automatically passed by pytest
+    assert len(sample_data) == 3
+    assert 'Churn' in sample_data.columns
+
+
+def test_with_multiple_fixtures(sample_data, processed_data):
+    """Test using multiple fixtures."""
+    assert len(sample_data) > 0
+    assert processed_data['X_train'].shape[0] == 80
+```
+
+**pytest automatically**:
+
+1. Sees fixture name in function parameters
+2. Calls the fixture function
+3. Passes the return value to your test
+
+---
+
+### Part 9.6: Testing Preprocessing Module
+
+Create comprehensive tests for `test_preprocess.py`:
+
+```python
+"""
+Tests for src/preprocess.py module.
+"""
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from src.preprocess import (
+    handle_missing_values,
+    drop_unnecessary_columns,
+    encode_target,
+    split_features_target,
+    preprocess_pipeline
+)
+
+
+class TestLoadData:
+    """Tests for load_data function."""
+    
+    def test_load_data_success(self, tmp_path):
+        """Test successful data loading."""
+        from src.preprocess import load_data
+        
+        csv_file = tmp_path / "data.csv"
+        csv_file.write_text("col1,col2\\nval1,val2\\n")
+        
+        df = load_data(str(csv_file))
+        
+        assert isinstance(df, pd.DataFrame)
+        assert not df.empty
+    
+    def test_load_data_file_not_found(self):
+        """Test error for missing file."""
+        from src.preprocess import load_data
+        
+        with pytest.raises(FileNotFoundError):
+            load_data("nonexistent.csv")
+
+
+class TestHandleMissingValues:
+    """Tests for handle_missing_values function."""
+    
+    def test_no_missing_values(self, sample_data):
+        """Test with no missing values."""
+        df_clean = handle_missing_values(sample_data)
+        
+        assert df_clean.isnull().sum().sum() == 0
+        assert len(df_clean) == len(sample_data)
+    
+    def test_totalcharges_conversion(self):
+        """Test TotalCharges conversion."""
+        df = pd.DataFrame({
+            'TotalCharges': [' ', '100', '200']
+        })
+        
+        df_clean = handle_missing_values(df)
+        
+        assert df_clean['TotalCharges'].dtype in [np.float64, np.float32]
+        assert df_clean['TotalCharges'].iloc[0] == 0.0
+
+
+class TestDropUnnecessaryColumns:
+    """Tests for drop_unnecessary_columns function."""
+    
+    def test_drop_single_column(self, sample_data):
+        """Test dropping single column."""
+        df_clean = drop_unnecessary_columns(sample_data, columns=['customerID'])
+        
+        assert 'customerID' not in df_clean.columns
+        assert len(df_clean.columns) == len(sample_data.columns) - 1
+    
+    def test_drop_nonexistent_column(self, sample_data):
+        """Test dropping column that doesn't exist."""
+        df_clean = drop_unnecessary_columns(sample_data, columns=['fake_col'])
+        
+        # Should not raise error
+        assert len(df_clean.columns) == len(sample_data.columns)
+
+
+class TestEncodeTarget:
+    """Tests for encode_target function."""
+    
+    def test_encode_target_success(self, sample_data):
+        """Test target encoding."""
+        df_encoded, encoder = encode_target(sample_data, target_col='Churn')
+        
+        assert encoder is not None
+        assert df_encoded['Churn'].dtype in [np.int64, np.int32]
+        assert set(df_encoded['Churn'].unique()).issubset({0, 1})
+
+
+class TestSplitFeaturesTarget:
+    """Tests for split_features_target function."""
+    
+    def test_split_success(self, sample_data):
+        """Test splitting features and target."""
+        X, y = split_features_target(sample_data, target_col='Churn')
+        
+        assert isinstance(X, pd.DataFrame)
+        assert isinstance(y, pd.Series)
+        assert 'Churn' not in X.columns
+        assert len(X) == len(y)
+    
+    def test_split_missing_target(self, sample_data):
+        """Test error when target is missing."""
+        with pytest.raises(ValueError, match="not found"):
+            split_features_target(sample_data, target_col='nonexistent')
+
+
+@pytest.mark.integration
+class TestPreprocessingPipeline:
+    """Integration test for complete preprocessing."""
+    
+    def test_full_pipeline(self, tmp_path):
+        """Test complete preprocessing pipeline."""
+        # Create test CSV
+        csv_file = tmp_path / "test.csv"
+        data = pd.DataFrame({
+            'customerID': ['C1', 'C2', 'C3', 'C4', 'C5'],
+            'gender': ['Male', 'Female', 'Male', 'Female', 'Male'],
+            'tenure': [12, 24, 36, 6, 48],
+            'MonthlyCharges': [50, 70, 25, 45, 95],
+            'Churn': ['No', 'No', 'Yes', 'No', 'Yes']
+        })
+        data.to_csv(csv_file, index=False)
+        
+        # Run pipeline
+        result = preprocess_pipeline(str(csv_file), scale=True, use_sklearn_pipeline=True)
+        X_train, X_test, y_train, y_test, pipeline, encoder = result
+        
+        # Verify results
+        assert X_train.shape[0] > 0
+        assert X_test.shape[0] > 0
+        assert pipeline is not None
+        assert encoder is not None
+```
+
+#### Run Preprocessing Tests
+
+```bash
+pytest tests/test_preprocess.py -v
+```
+
+---
+
+### Part 9.7: Testing Training Module
+
+Create `tests/test_train.py`:
+
+```python
+"""
+Tests for src/train.py module.
+"""
+
+import pytest
+from sklearn.ensemble import RandomForestClassifier
+
+from src.train import train_random_forest, save_model, evaluate_model
+
+
+class TestTrainRandomForest:
+    """Tests for train_random_forest function."""
+    
+    def test_train_with_default_params(self, processed_data):
+        """Test training with default parameters."""
+        X_train = processed_data['X_train']
+        y_train = processed_data['y_train']
+        
+        model = train_random_forest(X_train, y_train, tune_hyperparameters=False)
+        
+        assert isinstance(model, RandomForestClassifier)
+        assert hasattr(model, 'estimators_')
+        assert model.random_state == 42
+    
+    def test_train_can_predict(self, processed_data):
+        """Test that trained model can make predictions."""
+        X_train = processed_data['X_train']
+        y_train = processed_data['y_train']
+        X_test = processed_data['X_test']
+        
+        model = train_random_forest(X_train, y_train, tune_hyperparameters=False)
+        predictions = model.predict(X_test)
+        
+        assert len(predictions) == len(X_test)
+
+
+class TestSaveModel:
+    """Tests for save_model function."""
+    
+    def test_save_model_creates_file(self, trained_model, tmp_path):
+        """Test that save_model creates a file."""
+        model_path = save_model(trained_model, 'test_model', str(tmp_path))
+        
+        assert Path(model_path).exists()
+        assert '.pkl' in model_path
+    
+    def test_saved_model_can_be_loaded(self, trained_model, tmp_path):
+        """Test that saved model can be loaded."""
+        import joblib
+        
+        model_path = save_model(trained_model, 'test_model', str(tmp_path))
+        loaded_model = joblib.load(model_path)
+        
+        assert hasattr(loaded_model, 'predict')
+
+
+class TestEvaluateModel:
+    """Tests for evaluate_model function."""
+    
+    def test_evaluate_returns_metrics(self, trained_model, processed_data):
+        """Test that evaluate returns all metrics."""
+        X_test = processed_data['X_test']
+        y_test = processed_data['y_test']
+        
+        metrics = evaluate_model(trained_model, X_test, y_test)
+        
+        assert 'accuracy' in metrics
+        assert 'precision' in metrics
+        assert 'recall' in metrics
+        assert 'f1_score' in metrics
+        assert 0.0 <= metrics['accuracy'] <= 1.0
+
+
+@pytest.mark.parametrize("model_type", [
+    'logistic_regression',
+    'random_forest',
+    'decision_tree'
+])
+def test_train_different_models(model_type, processed_data):
+    """Parametrized test for different model types."""
+    from src.train import (
+        train_logistic_regression,
+        train_random_forest,
+        train_decision_tree
+    )
+    
+    X_train = processed_data['X_train']
+    y_train = processed_data['y_train']
+    
+    train_functions = {
+        'logistic_regression': train_logistic_regression,
+        'random_forest': train_random_forest,
+        'decision_tree': train_decision_tree
+    }
+    
+    train_func = train_functions[model_type]
+    model = train_func(X_train, y_train, tune_hyperparameters=False)
+    
+    assert hasattr(model, 'predict')
+```
+
+---
+
+### Part 9.8: Testing Prediction Module
+
+Create `tests/test_predict.py`:
+
+```python
+"""
+Tests for src/predict.py module.
+"""
+
+import numpy as np
+import pytest
+
+from src.predict import load_model, predict, ModelPredictor
+
+
+class TestLoadModel:
+    """Tests for load_model function."""
+    
+    def test_load_model_success(self, saved_model_file):
+        """Test successful model loading."""
+        model = load_model(str(saved_model_file))
+        
+        assert model is not None
+        assert hasattr(model, 'predict')
+    
+    def test_load_model_file_not_found(self):
+        """Test error for missing model file."""
+        with pytest.raises(FileNotFoundError):
+            load_model("nonexistent_model.pkl")
+
+
+class TestPredict:
+    """Tests for predict function."""
+    
+    def test_predict_returns_array(self, trained_model, processed_data):
+        """Test that predict returns numpy array."""
+        X_test = processed_data['X_test']
+        
+        predictions = predict(trained_model, X_test)
+        
+        assert isinstance(predictions, np.ndarray)
+        assert len(predictions) == len(X_test)
+    
+    def test_predict_empty_input_raises_error(self, trained_model):
+        """Test that empty input raises ValueError."""
+        X_empty = np.array([])
+        
+        with pytest.raises(ValueError, match="empty"):
+            predict(trained_model, X_empty)
+
+
+class TestModelPredictor:
+    """Tests for ModelPredictor class."""
+    
+    def test_init(self, saved_model_file):
+        """Test ModelPredictor initialization."""
+        predictor = ModelPredictor(str(saved_model_file))
+        
+        assert predictor.model is not None
+    
+    def test_predict(self, saved_model_file, processed_data):
+        """Test prediction using ModelPredictor."""
+        predictor = ModelPredictor(str(saved_model_file))
+        X_test = processed_data['X_test']
+        
+        predictions = predictor.predict(X_test)
+        
+        assert len(predictions) == len(X_test)
+```
+
+---
+
+### Part 9.9: Testing Evaluation Module
+
+Create `tests/test_evaluate.py`:
+
+```python
+"""
+Tests for src/evaluate.py module.
+Note: Uses 'y' for true labels and 'yhat' for predictions.
+"""
+
+import numpy as np
+import pytest
+
+from src.evaluate import calculate_accuracy, calculate_metrics, evaluate_model
+
+
+class TestCalculateAccuracy:
+    """Tests for calculate_accuracy function."""
+    
+    def test_perfect_accuracy(self):
+        """Test with perfect predictions."""
+        y = np.array(['Yes', 'No', 'Yes', 'No'])
+        yhat = np.array(['Yes', 'No', 'Yes', 'No'])
+        
+        accuracy = calculate_accuracy(y, yhat)
+        
+        assert accuracy == 1.0
+    
+    def test_half_accuracy(self):
+        """Test with 50% accuracy."""
+        y = np.array(['Yes', 'No', 'Yes', 'No'])
+        yhat = np.array(['Yes', 'No', 'No', 'Yes'])
+        
+        accuracy = calculate_accuracy(y, yhat)
+        
+        assert accuracy == 0.5
+
+
+class TestCalculateMetrics:
+    """Tests for calculate_metrics function."""
+    
+    def test_all_metrics_present(self):
+        """Test that all metrics are calculated."""
+        y = np.array(['Yes', 'No', 'Yes', 'No'] * 10)
+        yhat = np.array(['Yes', 'No', 'Yes', 'Yes'] * 10)
+        
+        metrics = calculate_metrics(y, yhat)
+        
+        assert 'accuracy' in metrics
+        assert 'precision' in metrics
+        assert 'recall' in metrics
+        assert 'f1_score' in metrics
+        assert all(0.0 <= v <= 1.0 for v in metrics.values())
+
+
+class TestEvaluateModel:
+    """Tests for evaluate_model function."""
+    
+    def test_complete_evaluation(self, trained_model, processed_data):
+        """Test complete model evaluation."""
+        X_test = processed_data['X_test']
+        y_test = processed_data['y_test']
+        
+        results = evaluate_model(trained_model, X_test, y_test)
+        
+        assert 'accuracy' in results
+        assert 'confusion_matrix' in results
+        assert 'classification_report' in results
+```
+
+---
+
+### Part 9.10: Integration Tests
+
+Create `tests/test_integration.py`:
+
+```python
+"""
+Integration tests for complete ML workflows.
+"""
+
+import pytest
+from pathlib import Path
+
+from src.preprocess import preprocess_pipeline
+from src.train import train_random_forest, save_model
+from src.predict import ModelPredictor, predict
+from src.evaluate import evaluate_model
+
+
+@pytest.mark.integration
+class TestCompleteMLPipeline:
+    """Tests for complete ML pipeline."""
+    
+    def test_csv_to_predictions(self, sample_csv_file_large, tmp_path):
+        """Test complete workflow: CSV → preprocessing → training → prediction."""
+        # Preprocess
+        result = preprocess_pipeline(
+            str(sample_csv_file_large),
+            scale=True,
+            use_sklearn_pipeline=True
+        )
+        X_train, X_test, y_train, y_test, pipeline, encoder = result
+        
+        # Train
+        model = train_random_forest(X_train, y_train, tune_hyperparameters=False)
+        
+        # Predict
+        predictions = predict(model, X_test)
+        
+        # Evaluate
+        results = evaluate_model(model, X_test, y_test)
+        
+        # Verify
+        assert len(predictions) == len(X_test)
+        assert 0.0 <= results['accuracy'] <= 1.0
+    
+    def test_save_load_workflow(self, sample_csv_file_large, tmp_path):
+        """Test saving and loading all components."""
+        # Preprocess
+        X_train, X_test, y_train, y_test, pipeline, encoder = preprocess_pipeline(
+            str(sample_csv_file_large),
+            scale=True,
+            use_sklearn_pipeline=True
+        )
+        
+        # Train and save
+        model = train_random_forest(X_train, y_train, tune_hyperparameters=False)
+        model_path = save_model(model, 'test_model', str(tmp_path))
+        
+        # Load and predict
+        predictor = ModelPredictor(model_path)
+        predictions = predictor.predict(X_test)
+        
+        assert len(predictions) == len(X_test)
+```
+
+---
+
+### Part 9.11: Running Tests and Code Coverage
+
+#### Run All Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with verbose output
+pytest -v
+
+# Run specific test file
+pytest tests/test_preprocess.py
+
+# Run specific test
+pytest tests/test_preprocess.py::test_load_data_success
+
+# Run tests by marker
+pytest -m unit
+pytest -m integration
+```
+
+#### Measure Code Coverage
+
+```bash
+# Run tests with coverage
+pytest --cov=src --cov-report=html --cov-report=term
+
+# Open coverage report in browser
+open htmlcov/index.html  # Mac
+xdg-open htmlcov/index.html  # Linux
+start htmlcov/index.html  # Windows
+```
+
+**Expected output**:
+
+```output
+----------- coverage: platform linux, python 3.12.12-final-0 -----------
+Name                       Stmts   Miss  Cover
+----------------------------------------------
+src/__init__.py                1      0   100%
+src/evaluate.py              150     15    90%
+src/predict.py               120     10    92%
+src/preprocess.py            200     20    90%
+src/train.py                 250     25    90%
+src/utils/config.py           10      0   100%
+----------------------------------------------
+TOTAL                        731     70    90%
+```
+
+**Coverage targets**:
+
+- **80%+**: Acceptable
+- **90%+**: Good
+- **95%+**: Excellent
+- **100%**: Overkill (don't aim for this)
+
+#### Understanding Coverage Report
+
+The HTML report shows:
+
+- **Green lines**: Covered by tests
+- **Red lines**: Not covered
+- **Yellow lines**: Partially covered
+
+Focus on covering:
+
+- ✅ Critical business logic
+- ✅ Error handling paths
+- ✅ Edge cases
+
+Don't worry about:
+
+- ❌ Simple getters/setters
+- ❌ `__init__` methods with just assignments
+- ❌ Logging statements
+
+---
+
+### Part 9.12: Best Practices for ML Testing
+
+#### 1. Use Small, Fast Test Data
+
+```python
+# ❌ Bad: Using full dataset
+@pytest.fixture
+def test_data():
+    return pd.read_csv('data/raw/full_dataset.csv')  # 1GB file!
+
+# ✅ Good: Using small synthetic data
+@pytest.fixture
+def test_data():
+    return pd.DataFrame({
+        'feature1': [1, 2, 3, 4, 5],
+        'feature2': ['a', 'b', 'c', 'd', 'e'],
+        'target': [0, 1, 0, 1, 0]
+    })
+```
+
+#### 2. Mock External Dependencies
+
+```python
+# Mock MLflow to test without actually logging
+@patch('mlflow.log_param')
+@patch('mlflow.log_metric')
+def test_train_with_mlflow(mock_metric, mock_param):
+    model = train_model(X, y)
+    
+    assert mock_param.called
+    assert mock_metric.called
+```
+
+#### 3. Test Edge Cases
+
+```python
+def test_empty_dataframe():
+    """Test with empty input."""
+    df = pd.DataFrame()
+    
+    with pytest.raises(ValueError, match="empty"):
+        preprocess(df)
+
+def test_single_sample():
+    """Test with single sample."""
+    X = np.array([[1, 2, 3]])
+    predictions = model.predict(X)
+    
+    assert len(predictions) == 1
+```
+
+#### 4. Use Parametrized Tests
+
+```python
+@pytest.mark.parametrize("input_val,expected", [
+    (0, 0),
+    (1, 1),
+    (5, 25),
+    (-2, 4)
+])
+def test_square(input_val, expected):
+    assert square(input_val) == expected
+```
+
+#### 5. Organize Tests into Classes
+
+```python
+class TestDataLoading:
+    """All tests for data loading."""
+    
+    def test_load_csv(self):
+        pass
+    
+    def test_load_excel(self):
+        pass
+    
+    def test_load_json(self):
+        pass
+```
+
+#### 6. Don't Test Implementation Details
+
+```python
+# ❌ Bad: Testing internal variables
+def test_internal_state():
+    model = Model()
+    assert model._internal_counter == 0  # Don't test this
+
+# ✅ Good: Testing behavior
+def test_prediction_output():
+    model = Model()
+    result = model.predict(X)
+    assert len(result) == len(X)  # Test this
+```
+
+---
+
+### Part 9.13: Continuous Integration (Preview)
+
+### What is CI?
+
+**Continuous Integration (CI)** automatically runs your tests every time you push code to GitHub.
+
+**Benefits**:
+
+- ✅ Catch bugs before merging
+- ✅ Ensure all contributors run tests
+- ✅ Maintain code quality
+- ✅ Prevent broken code in main branch
+
+### Preview: GitHub Actions
+
+In Lab 06, you'll set up CI with GitHub Actions. Here's a preview:
+
+`.github/workflows/tests.yml`:
+
+```yaml
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.12'
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+    
+    - name: Run tests
+      run: |
+        pytest --cov=src --cov-report=term
+```
+
+**This will**:
+
+- Run tests on every push
+- Show test results in GitHub
+- Block merges if tests fail
+
+---
+
+### Part 9.14: Troubleshooting Common Issues
+
+#### Issue: Tests not discovered
+
+**Problem**: `pytest` finds no tests
+
+**Solution**:
+
+```bash
+# Check test discovery
+pytest --collect-only
+
+# Ensure files start with 'test_'
+mv my_tests.py test_my_module.py
+
+# Ensure functions start with 'test_'
+def test_my_function():  # Good
+def my_test():  # Bad - won't be discovered
+```
+
+#### Issue: Import errors
+
+**Problem**: `ModuleNotFoundError: No module named 'src'`
+
+**Solution**:
+
+```bash
+# Run pytest from project root
+cd /path/to/project
+pytest
+
+# Or install your package in editable mode
+pip install -e .
+```
+
+#### Issue: Fixture not found
+
+**Problem**: `fixture 'sample_data' not found`
+
+**Solution**:
+
+- Ensure fixture is in `conftest.py`
+- Check fixture name matches parameter name
+- Verify `conftest.py` is in tests directory
+
+#### Issue: Tests pass locally but fail in CI
+
+**Problem**: Different behavior in CI
+
+**Common causes**:
+
+- Different Python version
+- Different package versions
+- Different random seeds
+- Timezone differences
+
+**Solution**: Use same Python version and pin package versions
+
+---
+
+### Part 9.15: Summary and Next Steps
+
+#### What You've Accomplished
+
+Congratulations! You've now completed Lab 02 in its entirety. Your project now has:
+
+✅ **Virtual environments** for reproducibility
+✅ **CLI interfaces** for easy usage
+✅ **Hyperparameter tuning** for better models
+✅ **YAML configuration** for flexibility
+✅ **DVC** for data version control
+✅ **MLflow** for experiment tracking
+✅ **Comprehensive test suite** with pytest
+
+**Your test suite includes**:
+
+- ~2,700 lines of test code
+- Unit tests for all modules
+- Integration tests for complete workflows
+- Test fixtures for reusable data
+- Code coverage measurement
+- Organized test structure
+
+#### Quality Metrics
+
+Your project should now achieve:
+
+- **Code coverage**: >80%
+- **Tests**: 50+ test functions
+- **Test files**: 6 comprehensive test modules
+- **Documentation**: Tests serve as examples
+
+#### Commands Reference
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src --cov-report=html --cov-report=term
+
+# Run specific tests
+pytest tests/test_preprocess.py
+pytest tests/test_train.py -v
+pytest -m integration
+
+# Run tests matching pattern
+pytest -k "test_load"
+
+# Show slowest tests
+pytest --durations=10
+```
+
+#### Project Status: Lab 02 Complete! 🎉
+
+**Version**: 2.3.0 (with Testing)
+
+**Next Labs**:
+
+- **Lab 03**: REST API Development (Flask/FastAPI)
+- **Lab 04**: Containerization (Docker)
+- **Lab 05**: Cloud Deployment (AWS/GCP/Azure)
+- **Lab 06**: CI/CD & Monitoring (GitHub Actions)
+
+#### Commit Your Work
+
+```bash
+git add tests/ pytest.ini
+git commit -m "feat: Add comprehensive pytest test suite (Lab 02 Part 9)
+
+**Testing Infrastructure**:
+- Add pytest and pytest-cov to requirements.txt
+- Create tests/ directory with fixtures
+- Configure pytest with pytest.ini
+
+**Test Coverage**:
+- test_preprocess.py: Data loading, pipelines, encoding
+- test_train.py: Model training, MLflow integration
+- test_predict.py: Predictions, file I/O
+- test_evaluate.py: Metrics calculation
+- test_integration.py: End-to-end workflows
+
+**Documentation**:
+- Add Lab 02 Part 9 testing tutorial
+- Update README with testing section
+
+**Results**:
+- Coverage: >80%
+- All tests pass
+- Ready for CI/CD (Lab 06)
+
+Lab 02 Complete: Structure + DVC + MLflow + Testing
+Version: 2.3.0"
+
+git push
+```
+
+---
+
+### Additional Resources
+
+#### Testing Books
+
+- "Test-Driven Development with Python" by Harry Percival
+- "Python Testing with pytest" by Brian Okken
+
+#### Online Resources
+
+- pytest Documentation: [https://docs.pytest.org/](https://docs.pytest.org/)
+- Real Python pytest Tutorial: [https://realpython.com/pytest-python-testing/](https://realpython.com/pytest-python-testing/)
+- Effective Python Testing: [https://effectivepython.com/](https://effectivepython.com/)
+
+#### Testing Tools
+
+- **pytest**: Main testing framework
+- **pytest-cov**: Coverage measurement
+- **pytest-mock**: Mocking utilities
+- **hypothesis**: Property-based testing
+- **tox**: Testing across multiple environments
+
+---
+
+**Lab 2 Complete!** 🎊
+
+Your code is production-ready, maintainable, and reliable. Well done!
+
+---
+
 *Lab 02 Instructions*  
 *CMPT 2500: Machine Learning Deployment and Software Development*  
 *NorQuest College*

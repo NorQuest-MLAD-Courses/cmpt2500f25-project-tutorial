@@ -272,6 +272,175 @@ model = mlflow.sklearn.load_model(f"runs:/{best_run_id}/model")
 
 ---
 
+## Testing
+
+This project includes a comprehensive test suite using **pytest** to ensure code quality and reliability.
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with verbose output
+pytest -v
+
+# Run specific test file
+pytest tests/test_preprocess.py
+
+# Run tests by marker
+pytest -m unit        # Unit tests only
+pytest -m integration # Integration tests only
+pytest -m slow        # Slow tests
+```
+
+### Code Coverage
+
+```bash
+# Run tests with coverage report
+pytest --cov=src --cov-report=html --cov-report=term
+
+# View HTML coverage report
+open htmlcov/index.html  # Mac
+xdg-open htmlcov/index.html  # Linux
+start htmlcov/index.html  # Windows
+```
+
+### Test Organization
+
+```output
+tests/
+├── conftest.py              # Shared fixtures
+├── test_preprocess.py       # Preprocessing tests
+├── test_train.py            # Training tests
+├── test_predict.py          # Prediction tests
+├── test_evaluate.py         # Evaluation tests
+└── test_integration.py      # End-to-end workflow tests
+```
+
+### Test Coverage
+
+| Module | Tests | Coverage |
+|--------|-------|----------|
+| `preprocess.py` | 25+ tests | >85% |
+| `train.py` | 30+ tests | >85% |
+| `predict.py` | 20+ tests | >90% |
+| `evaluate.py` | 25+ tests | >90% |
+| Integration | 15+ tests | - |
+| **Total** | **115+ tests** | **>80%** |
+
+### Test Types
+
+**Unit Tests** (`@pytest.mark.unit`):
+
+- Test individual functions in isolation
+- Fast execution (<1s per test)
+- Mock external dependencies
+
+**Integration Tests** (`@pytest.mark.integration`):
+
+- Test complete workflows
+- Slower execution (1-5s per test)
+- Use real data and models
+
+**Parametrized Tests**:
+
+- Test multiple scenarios with same logic
+- Example: Test all 6 model types with one test function
+
+### Key Test Features
+
+- ✅ Comprehensive test fixtures in `conftest.py`
+- ✅ Temporary directories for file I/O tests
+- ✅ MLflow mocking for testing without logging
+- ✅ Edge case testing (empty data, missing values, wrong types)
+- ✅ Reproducible tests with fixed random seeds
+
+### Example Test
+
+```python
+def test_train_random_forest(processed_data):
+    """Test Random Forest training."""
+    X_train = processed_data['X_train']
+    y_train = processed_data['y_train']
+    
+    model = train_random_forest(X_train, y_train, tune_hyperparameters=False)
+    
+    assert isinstance(model, RandomForestClassifier)
+    assert hasattr(model, 'predict')
+    assert model.random_state == 42
+```
+
+### Continuous Integration
+
+Tests automatically run on every push via GitHub Actions (configured in Lab 06).
+
+**Status Badge**: [![Tests](https://github.com/your-username/repo/actions/workflows/tests.yml/badge.svg)](https://github.com/your-username/repo/actions)
+
+### Running Tests in CodeSpaces
+
+```bash
+# Activate virtual environment
+source .venv/bin/activate
+
+# Run tests
+pytest --cov=src --cov-report=term
+
+# All tests should pass!
+```
+
+### Test Fixtures
+
+Key fixtures available in `conftest.py`:
+
+- `sample_data`: Small DataFrame for quick tests
+- `sample_data_large`: Larger DataFrame (100 rows)
+- `processed_data`: Preprocessed train/test split
+- `trained_model`: Pre-trained RandomForest model
+- `temp_output_dir`: Temporary directory for outputs
+- `saved_model_file`: Model saved to disk
+
+### Writing New Tests
+
+1. Create test file: `tests/test_your_module.py`
+2. Import the module: `from src.your_module import your_function`
+3. Write test function starting with `test_`:
+
+```python
+def test_your_function(sample_data):
+    """Test your_function with sample data."""
+    result = your_function(sample_data)
+    
+    assert result is not None
+    assert len(result) > 0
+```
+
+4. Run your test: `pytest tests/test_your_module.py`
+
+### Troubleshooting Tests
+
+**Tests not found**:
+
+```bash
+# Run from project root
+cd /path/to/project
+pytest
+```
+
+**Import errors**:
+
+```bash
+# Install package in editable mode
+pip install -e .
+```
+
+**Fixture not found**:
+
+- Ensure fixture is in `conftest.py`
+- Check fixture name matches parameter name
+
+---
+
 ## Configuration Files
 
 Config files in `configs/` directory:
@@ -377,7 +546,7 @@ python -m src.evaluate \
 
 ---
 
-## Testing
+## Testing the Code
 
 ```bash
 # Run all tests

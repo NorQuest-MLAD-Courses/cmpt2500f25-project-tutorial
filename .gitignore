@@ -194,16 +194,36 @@ configs/*.local.yaml
 configs/*.override.yaml
 configs/*_temp.yaml
 
-# Test outputs
+# Testing and Coverage
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.cache
+nosetests.xml
+
+# Test outputs (don't commit test results)
 tests/outputs/
 tests/temp/
 test_results/
+.pytest_tmp/
+
 
 # Models in any test directories
 test_*/models/
 test_*/*.pkl
 test_*/*.npy
 test_*/*.json
+tests/**/*.pkl
+tests/**/*.npy
+tests/**/*.csv
+tests/**/*.json
 
 # Profiling outputs
 *.prof
