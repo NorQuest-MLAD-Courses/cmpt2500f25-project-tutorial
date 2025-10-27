@@ -4382,12 +4382,197 @@ git push
 
 ---
 
+## Part 10: Submission
+
+### What to Submit
+
+1. **GitHub Repository URL**
+    - Your GitHub Classroom repository.
+    - Should contain all required files, including DVC (`.dvc`, `.dvc/config`), MLflow (`mlruns/` in `.gitignore`), and testing (`tests/`) files.
+    - Latest changes pushed (including `.dvc` files, but *not* the data itself).
+    - Repository should be public or accessible to instructors.
+
+2. **DVC Remote Storage URL**
+    - A shareable link to your DVC remote (e.g., the Google Drive folder) showing the DVC-managed data structure (the folders with 2-character names).
+
+3. **MLflow UI Screenshots**
+    - In your README.md or as separate image files, include at least one screenshot of your MLflow UI.
+    - The screenshot must show **multiple runs** (at least 2-3) with different parameters, and a detail view of one run showing logged **parameters**, **metrics**, and **artifacts** (the model folder).
+
+4. **Updated README.md**
+    - Your README.md must be updated with new sections explaining:
+        - How to set up DVC (`dvc pull`).
+        - How to run training to track with MLflow (`python -m src.train ...`).
+        - How to run the test suite (`pytest`).
+
+### Grading Criteria
+
+Your lab will be evaluated on:
+
+1. **DVC Integration (25%)**
+    - DVC initialized correctly (`.dvc/` directory).
+    - Remote storage (Google Drive) configured and functional.
+    - Data (`data/raw`, `data/processed`) tracked by DVC, not Git (`.dvc` files exist, `data/.gitignore` correct).
+    - Data successfully pushed to remote (`dvc push`) and retrievable (`dvc pull`).
+    - `.dvcignore` file present and correctly configured.
+
+2. **MLflow Integration (25%)**
+    - `mlflow` added to `requirements.txt`.
+    - `train.py` correctly integrates MLflow (`with mlflow.start_run():`).
+    - **Parameters** (hyperparameters, config values) logged correctly.
+    - **Metrics** (accuracy, precision, recall, F1, etc.) logged correctly.
+    - **Model artifacts** (trained model) logged correctly using `mlflow.sklearn.log_model`.
+    - `evaluate.py` and/or `predict.py` updated to load models from an MLflow URI.
+    - MLflow UI is functional and shows tracked experiments and runs.
+
+3. **Testing (20%)**
+    - `pytest` and `pytest-cov` added to `requirements.txt`.
+    - `pytest.ini` configured correctly.
+    - `tests/` directory structured with `test_*.py` files.
+    - Meaningful **unit and integration tests** covering key functions in `preprocess.py`, `train.py`, `evaluate.py`, and `predict.py`.
+    - Tests pass when run (`pytest`).
+    - Code coverage is reasonable (e.g., > 60%).
+
+4. **Code Functionality & CLI (15%)**
+    - `argparse` implemented correctly in `preprocess.py`, `train.py`, `predict.py`, `evaluate.py`.
+    - CLIs are functional and used for configuration.
+    - `stage_02_example_usage.py` (or similar) runs successfully, demonstrating the DVC + MLflow workflow.
+    - Code successfully loads data (via DVC), trains (with MLflow), and evaluates.
+
+5. **Documentation & Git (15%)**
+    - Comprehensive README updates (as specified in "What to Submit").
+    - Code remains clean with type hints and docstrings.
+    - Git repository is clean with meaningful commit messages.
+    - `.dvc` files, `tests/`, and config files are committed; data and `__pycache__` are ignored.
+
+### Bonus Points (Up to +10%)
+
+- Advanced DVC usage (e.g., creating a `dvc.yaml` pipeline).
+- Advanced MLflow usage (e.g., using `mlflow.autolog()`, Model Registry).
+- Excellent test coverage (> 85%) with thorough unit tests.
+- Using `pytest` fixtures (`conftest.py`) effectively.
+- Using `mocking` in tests (e.g., to mock MLflow logging or data loading).
+- Setting up a basic GitHub Action to automatically run `pytest` on push.
+
+### Due Date
+
+**[To be announced by instructor]**
+
+**Late Policy**: [To be specified by instructor]
+
+---
+
+## Part 11: Final Checklist
+
+Before you submit, go through this complete checklist:
+
+### DVC
+
+- [ ] `dvc` and `dvc-gdrive` added to `requirements.txt`.
+- [ ] `dvc init` was run.
+- [ ] `.dvc/config` file is present and configured with a remote (e.g., `gdrive`).
+- [ ] `dvc add data/raw` and `dvc add data/processed` were run.
+- [ ] `data/raw.dvc` and `data/processed.dvc` files exist.
+- [ ] `data/.gitignore` file exists and contains `raw/` and `processed/`.
+- [ ] `.dvcignore` file exists (e.g., to ignore `.DS_Store` in data folders).
+- [ ] `dvc push` was run and data is on the remote.
+- [ ] `dvc pull` works on a fresh clone (tested if possible).
+
+### MLflow
+
+- [ ] `mlflow` added to `requirements.txt`.
+- [ ] `src/train.py` imports `mlflow` and `mlflow.sklearn`.
+- [ ] Training logic is wrapped in `with mlflow.start_run():`.
+- [ ] `mlflow.log_params()` used to log hyperparameters.
+- [ ] `mlflow.log_metric()` or `mlflow.log_metrics()` used to log evaluation scores.
+- [ ] `mlflow.sklearn.log_model()` used to save the model artifact.
+- [ ] `mlruns/` directory added to `.gitignore`.
+- [ ] `src/evaluate.py` or `src/predict.py` loads the model from MLflow (e.g., `mlflow.sklearn.load_model("runs:/<RUN_ID>/model")`).
+- [ ] Ran training at least 2-3 times with different parameters.
+- [ ] Verified results in `mlflow ui`.
+
+### Testing
+
+- [ ] `pytest` and `pytest-cov` added to `requirements.txt`.
+- [ ] `pytest.ini` file created and configured (`testpaths = tests`).
+- [ ] `tests/` directory created.
+- [ ] `tests/__init__.py` exists (can be empty).
+- [ ] At least one `tests/test_*.py` file exists (e.g., `test_preprocess.py`, `test_train.py`).
+- [ ] Tests written for key functions.
+- [ ] `conftest.py` created if fixtures are used (optional).
+- [ ] All tests pass (run `pytest`).
+- [ ] Test coverage checked (run `pytest --cov=src`).
+
+### Code & Functionality
+
+- [ ] `argparse` added to all main scripts (`preprocess.py`, `train.py`, etc.).
+- [ ] Scripts are runnable from the command line (e.g., `python -m src.train ...`).
+- [ ] `src/utils/config.py` is used to load YAML configs (if applicable) which are passed as args.
+- [ ] `stage_02_example_usage.py` (or similar) runs without errors.
+- [ ] Code still follows best practices (type hints, docstrings, logging).
+
+### Documentation
+
+- [ ] `README.md` updated with "How to setup DVC" (`dvc pull`).
+- [ ] `README.md` updated with "How to run training" (`python -m src.train ...`).
+- [ ] `README.md` updated with "How to run tests" (`pytest`).
+- [ ] Screenshot(s) of MLflow UI included in README or repo.
+
+### Git
+
+- [ ] All new/modified code files committed (`src/`, `tests/`, `pytest.ini`).
+- [ ] All DVC metadata files committed (`.dvc/config`, `data/raw.dvc`, `data/processed.dvc`, `data/.gitignore`, `.dvcignore`).
+- [ ] `.gitignore` is up-to-date (includes `mlruns/`, `data/raw/`, `data/processed/`, `.dvc/cache/`).
+- [ ] No large data files committed to Git.
+- [ ] Meaningful commit messages.
+- [ ] Latest changes pushed to GitHub.
+
+---
+
+## Congratulations! 🎉
+
+You've completed the second major step in your ML deployment journey! You've taken your structured project and elevated it with professional-grade tools:
+
+✅ **Data Version Control (DVC)** for reproducible data management  
+✅ **Experiment Tracking (MLflow)** for tracking, comparing, and managing models  
+✅ **Automated Testing (pytest)** for reliable, maintainable code  
+✅ **Functional CLIs** to make your scripts usable and configurable
+
+**Key Takeaways**:
+
+1. ✅ **Git is for code, DVC is for data.** Never commit large data files to Git.
+2. ✅ **If you can't reproduce it, it's not finished.** DVC ensures your data is versioned just like your code.
+3. ✅ **Track *every* experiment.** MLflow is your lab notebook, preventing "magic" models you can't recreate.
+4. ✅ **If it's not tested, it's broken.** Tests are your safety net, allowing you to refactor and add features without fear.
+5. ✅ **Scripts should be configurable.** CLIs (`argparse`) separate configuration from code logic.
+
+You're now ready to:
+
+- **Lab 3**: Serve your model as a **REST API** with Flask/FastAPI
+- **Lab 4**: Package your API into a **Docker container**
+- **Lab 5**: **Deploy** your container to the cloud
+- **Lab 6**: Implement **CI/CD** and **Monitoring**
+
+The foundation you've built and strengthened in this lab is what separates a data science experiment from a deployable machine learning product.
+
+---
+
+### Questions? Issues? Stuck?
+
+- Check the tutorial project for examples.
+- Review DVC, MLflow, and pytest documentation.
+- Ask in lab sessions or on Discord.
+- Use GitHub Issues for technical questions.
+- Collaborate with classmates (but write your own code!)
+
+---
+
 **Lab 2 Complete!** 🎊
 
 Your code is production-ready, maintainable, and reliable. Well done!
 
 ---
 
-*Lab 02 Instructions*  
+*Lab 2 Instructions*  
 *CMPT 2500: Machine Learning Deployment and Software Development*  
 *NorQuest College*

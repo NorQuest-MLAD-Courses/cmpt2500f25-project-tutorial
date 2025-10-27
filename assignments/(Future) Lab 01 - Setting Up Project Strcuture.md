@@ -3344,9 +3344,6 @@ Each lab builds on this foundation. The structure you've created will support al
 
 ### Happy Coding! 🚀
 
-*Lab prepared for CMPT 2500 - ML/AI Deployment*  
-*NorQuest College*  
-
 ---
 
 ## Appendix A: Quick Reference
@@ -3488,6 +3485,6 @@ class EnsemblePredictor:
 
 ---
 
-*Lab 01 Instructions*  
+*Lab 1 Instructions*  
 *CMPT 2500: Machine Learning Deployment and Software Development*  
 *NorQuest College*
