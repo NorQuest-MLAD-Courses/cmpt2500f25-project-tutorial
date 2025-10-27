@@ -351,8 +351,8 @@ catboost==1.2.8
 PyYAML==6.0.3
 
 # Data Version Control (DagsHub remote - recommended)
-dvc==3.63.0
 dagshub==0.6.3
+dvc-s3==3.2.2
 
 # Testing
 pytest==8.4.2
@@ -2420,8 +2420,8 @@ If not present, add it:
 # Add to requirements.txt
 
 # Data Version Control (DagsHub remote - recommended)
-dvc==3.63.0
 dagshub==0.6.3
+dvc-s3==3.2.2
 ```
 
 **Note**: If using Google Drive alternative, add:
@@ -2532,7 +2532,7 @@ your-project/
 │   ├── predict.py
 │   └── evaluate.py
 ├── models/
-├── requirements.txt        # Now includes: dvc, dagshub
+├── requirements.txt        # Now includes: dvc, dagshub, dvc-s3
 └── README.md
 ```
 

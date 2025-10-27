@@ -13,7 +13,7 @@ import numpy as np
 
 # Ensure the src directory is in the Python path
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR)) # Go up two levels
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 sys.path.append(PROJECT_ROOT)
 
 from src.evaluate import evaluate_model, print_evaluation_summary

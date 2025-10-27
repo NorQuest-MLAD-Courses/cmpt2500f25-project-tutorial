@@ -11,6 +11,7 @@ print("="*60)
 import os
 import sys
 
+# Ensure the src directory is in the Python path
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
