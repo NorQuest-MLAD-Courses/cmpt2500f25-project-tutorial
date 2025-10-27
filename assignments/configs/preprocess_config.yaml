@@ -1,0 +1,66 @@
+# configs/preprocess_config.yaml (Version 2: After DVC)
+
+# Data configuration
+data:
+  input_file: data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv  # DVC-tracked
+  output_dir: data/processed  # DVC-tracked
+  target_column: Churn
+  id_column: customerID
+
+# DVC configuration
+dvc:
+  track_raw: true  # Track raw data with DVC
+  track_processed: true  # Track processed data with DVC
+  remote: origin  # DagsHub remote
+  data_version: v1.0  # Version tag
+
+# Missing value handling
+missing_values:
+  strategy: drop
+  threshold: 0.5
+
+# Feature scaling
+scaling:
+  method: standard
+  with_mean: true
+  with_std: true
+
+# Feature columns
+features:
+  categorical:
+    - gender
+    - Partner
+    - Dependents
+    - PhoneService
+    - MultipleLines
+    - InternetService
+    - OnlineSecurity
+    - OnlineBackup
+    - DeviceProtection
+    - TechSupport
+    - StreamingTV
+    - StreamingMovies
+    - Contract
+    - PaperlessBilling
+    - PaymentMethod
+  
+  numerical:
+    - SeniorCitizen
+    - tenure
+    - MonthlyCharges
+    - TotalCharges
+
+# Train-test split
+split:
+  test_size: 0.2
+  random_state: 42
+  stratify: true
+
+# Pipeline options
+pipeline:
+  use_sklearn_pipeline: true
+  save_artifacts: true
+  output_files:
+    data: preprocessed_data.npy
+    pipeline: preprocessing_pipeline.pkl
+    label_encoder: label_encoder.pkl

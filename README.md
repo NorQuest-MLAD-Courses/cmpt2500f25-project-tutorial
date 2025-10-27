@@ -1,9 +1,10 @@
 # CMPT 2500 Project Tutorial: Telecom Customer Churn Prediction
 
-A production-ready machine learning project to predict customer churn in the telecommunications industry. This project demonstrates industry best practices including modular code organization, CLI interfaces, hyperparameter tuning, experiment tracking, and data versioning.
+A production-ready machine learning project to predict customer churn in the telecommunications industry. This project demonstrates industry best practices including modular code organization, CLI interfaces, hyperparameter tuning, data versioning with DVC, experiment tracking, and more.
 
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.7.2-orange.svg)](https://scikit-learn.org/)
+[![DVC](https://img.shields.io/badge/DVC-3.63.0-945DD6.svg)](https://dvc.org/)
 [![Code style: PEP 8](https://img.shields.io/badge/code%20style-PEP%208-black.svg)](https://www.python.org/dev/peps/pep-0008/)
 
 ## Overview
@@ -16,26 +17,34 @@ This project showcases a complete ML workflow from data preprocessing to model d
 - 🖥️ **CLI interfaces** for all major operations
 - 🔧 **Hyperparameter tuning** for optimal model performance
 - 📝 **YAML configuration** for flexible deployment
+- 📦 **Data version control (DVC)** with DagsHub
+- 📊 **Experiment tracking** with MLflow
 - 🧪 **Automated testing** with pytest
-- 📦 **Virtual environments** for reproducibility
+- 🐍 **Virtual environments** for reproducibility
 
 ## Project Structure
 
-```output
+```
 cmpt2500f25-project-tutorial/
 ├── .venv/                      # Virtual environment (not in Git)
+├── .dvc/                       # DVC configuration
+│   ├── config                  # DVC remote config (in Git)
+│   └── config.local            # Credentials (NOT in Git)
 ├── configs/                    # YAML configuration files
 │   ├── train_config.yaml
 │   ├── preprocess_config.yaml
 │   └── predict_config.yaml
 ├── data/
-│   ├── raw/                    # Original data
+│   ├── .gitignore              # DVC-generated (ignores actual data)
+│   ├── raw.dvc                 # DVC metadata for raw data (in Git)
+│   ├── processed.dvc           # DVC metadata for processed data (in Git)
+│   ├── raw/                    # Actual data (tracked by DVC, not Git)
 │   │   └── WA_Fn-UseC_-Telco-Customer-Churn.csv
-│   └── processed/              # Processed data & pipelines
+│   └── processed/              # Processed data (tracked by DVC, not Git)
 │       ├── preprocessed_data.npy
 │       ├── preprocessing_pipeline.pkl
 │       └── label_encoder.pkl
-├── models/                     # Trained models
+├── models/                     # Trained models (can be tracked by DVC)
 ├── notebooks/                  # Jupyter notebooks for exploration
 │   ├── proof_of_concept.ipynb
 │   ├── eda.ipynb
@@ -57,6 +66,7 @@ cmpt2500f25-project-tutorial/
 ├── outputs/                    # Plots, reports, results
 ├── experiments/                # Experiment notes
 ├── .gitignore
+├── .dvcignore
 ├── requirements.txt            # Python dependencies
 └── README.md
 ```
@@ -104,8 +114,11 @@ All models support:
 - Python 3.12.x (recommended)
 - Git
 - pip
+- DVC (for data versioning)
 
 **Note**: Python 3.13 is available but some packages may not be fully compatible. Stick with Python 3.12.x for maximum compatibility.
+
+### Setup Instructions
 
 1. **Clone the repository**:
 
@@ -133,11 +146,35 @@ All models support:
    pip install -r requirements.txt
    ```
 
-4. **Verify installation**:
+4. **Configure DVC remote (DagsHub)**:
 
    ```bash
-   python -c "import sklearn; import mlflow; import dvc; print('✅ All packages installed!')"
+   # Install DagsHub CLI tools
+   pip install dagshub --upgrade
+   
+   # Authenticate with DagsHub (opens browser)
+   dagshub login
    ```
+   
+   **Note:** 
+   - Select token expiration timeframe (e.g., 3 months for course duration)
+   - If you create a new CodeSpaces instance, run `dagshub login` again
+   - See **Data Version Control** section below for complete setup
+
+5. **Verify installation**:
+
+   ```bash
+   python -c "import sklearn; import dvc; print('✅ All packages installed!')"
+   ```
+
+6. **Pull data from DVC remote** (DagsHub):
+
+   ```bash
+   # Pull data and models from DVC remote storage
+   dvc pull
+   ```
+
+   **Note:** Data is stored in DagsHub remote storage, not in Git. The `dvc pull` command downloads the actual data files to your local machine.
 
 ## Usage
 
@@ -147,16 +184,19 @@ All models support:
 # 1. Activate virtual environment
 source .venv/bin/activate
 
-# 2. Preprocess data (creates sklearn pipeline)
+# 2. Pull data from DVC (if not already done)
+dvc pull
+
+# 3. Preprocess data (creates sklearn pipeline)
 python -m src.preprocess --input data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
 
-# 3. Train model (with hyperparameter tuning)
+# 4. Train model (with hyperparameter tuning)
 python -m src.train --data data/processed/preprocessed_data.npy --model random_forest --tune
 
-# 4. Make predictions
+# 5. Make predictions
 python -m src.predict --model models/random_forest_*.pkl --data data/processed/preprocessed_data.npy
 
-# 5. Evaluate model
+# 6. Evaluate model
 python -m src.evaluate --model models/random_forest_*.pkl --data data/processed/preprocessed_data.npy
 ```
 
@@ -292,6 +332,84 @@ python -m src.evaluate --help
 - Confusion Matrix
 - Classification Report
 
+## Data Version Control (DVC)
+
+This project uses **DVC** for versioning data and models, with **DagsHub** as the remote storage.
+
+**DagsHub Repository:** https://dagshub.com/ajallooe/cmpt2500f25-project-tutorial
+
+### Why DVC?
+
+- ✅ Version control for large files (data, models)
+- ✅ Lightweight metadata in Git
+- ✅ Cloud storage for actual data (DagsHub S3-compatible)
+- ✅ Easy collaboration
+- ✅ Reproducible experiments
+
+### DVC Workflow
+
+**Initial setup (already done):**
+```bash
+# Install DagsHub CLI and authenticate
+pip install dagshub --upgrade
+dagshub login  # Choose token expiration (e.g., 3 months)
+
+# Initialize DVC
+dvc init
+dvc remote add origin s3://dvc
+dvc remote modify origin endpointurl https://dagshub.com/user/repo.s3
+dvc remote default origin
+```
+
+**Important:** If you create a new CodeSpaces instance, run `dagshub login` again to re-authenticate.
+
+**Pull data (for collaborators):**
+```bash
+# After cloning the repo
+git clone https://github.com/your-repo.git
+cd your-repo
+
+# Pull data from DVC remote
+dvc pull
+```
+
+**Update data (for maintainers):**
+```bash
+# Make changes to data
+python -m src.preprocess --input data/raw/new_data.csv
+
+# Track changes with DVC
+dvc add data/processed
+
+# Commit DVC metadata to Git
+git add data/processed.dvc
+git commit -m "feat: Update processed data"
+git push
+
+# Push actual data to DVC remote
+dvc push
+```
+
+**Check data status:**
+```bash
+# Check if data has changed
+dvc status
+
+# Check if local and remote are in sync
+dvc status -c
+```
+
+### What's Tracked by DVC
+
+| Directory/File | Git | DVC | Description |
+|----------------|-----|-----|-------------|
+| `data/raw/` | ❌ | ✅ | Raw dataset (955KB) |
+| `data/processed/` | ❌ | ✅ | Processed data (1.3MB) |
+| `data/*.dvc` | ✅ | ❌ | DVC metadata files |
+| `models/*.pkl` | ✅ | ❌ | Trained models (can be added to DVC) |
+
+**Note:** Small files like `preprocessing_pipeline.pkl` (48KB) are kept in Git for convenience, but large model files should be tracked with DVC.
+
 ## Configuration Management
 
 The project uses YAML files for flexible configuration management.
@@ -400,6 +518,15 @@ Based on the analysis of 7,043 telecom customers:
 - XGBoost 3.1.1
 - CatBoost 1.2.8
 
+**Data Version Control**:
+
+- DVC 3.63.0
+- DagsHub 0.6.3 (DVC remote)
+
+**Experiment Tracking** (Coming Soon):
+
+- MLflow 3.5.1
+
 **Visualization**:
 
 - Matplotlib 3.10.7
@@ -418,11 +545,6 @@ Based on the analysis of 7,043 telecom customers:
 **Development**:
 
 - Jupyter 1.1.1
-
-**Coming Soon (Lab 02 - Part 2)**:
-
-- DVC 3.63.0 (data versioning)
-- MLflow 3.5.1 (experiment tracking)
 
 ## Development Workflow
 
@@ -445,6 +567,9 @@ jupyter notebook notebooks/
 # - Extract preprocessing → src/preprocess.py
 # - Extract training → src/train.py
 # - Extract evaluation → src/evaluate.py
+
+# Pull latest data
+dvc pull
 
 # Test modules individually
 python -m src.preprocess --input data/raw/data.csv
@@ -475,13 +600,22 @@ pytest --cov=src tests/
 ### 5. Version Control
 
 ```bash
-# Commit changes
-git add .
+# Commit code changes to Git
+git add src/
 git commit -m "feat: Add optimized models with tuning"
 git push
+
+# Track data changes with DVC
+dvc add data/processed
+git add data/processed.dvc
+git commit -m "feat: Update processed data"
+git push
+
+# Push data to DVC remote
+dvc push
 ```
 
-## Test
+## Testing
 
 ```bash
 # Run all tests
@@ -507,7 +641,7 @@ pytest -v tests/
 - Evaluation metrics
 - Basic documentation
 
-### ✅ Completed (Lab 02)
+### ✅ Completed (Lab 02 - Part 1)
 
 - Virtual environment setup
 - Dependency management
@@ -516,11 +650,13 @@ pytest -v tests/
 - Scikit-learn pipelines
 - YAML configuration
 - Unit testing basics
+- **DVC setup with DagsHub**
+- **Data version control**
 
 ### 🔜 Upcoming (Lab 02 - Part 2)
 
-- DVC setup with DagsHub
 - MLflow integration
+- Experiment tracking
 - Comprehensive pytest suite
 
 ### 🔜 Upcoming (Lab 03)
@@ -582,6 +718,47 @@ source .venv/bin/activate  # Mac/Linux
 pip install --force-reinstall -r requirements.txt
 ```
 
+### DVC Issues
+
+**Problem**: `dvc push` fails with authentication error
+
+```bash
+# Solution: Re-authenticate with DagsHub
+dagshub login
+
+# Or check if credentials are configured
+cat .dvc/config.local
+```
+
+**Note:** In new CodeSpaces instances, you must run `dagshub login` again as the authentication token is stored locally.
+
+**Problem**: `dvc pull` fails
+
+```bash
+# Solution: Check if you have credentials configured
+cat .dvc/config.local
+
+# If missing, authenticate with DagsHub
+dagshub login
+
+# See Lab 02 instructions for complete DagsHub setup
+```
+
+**Problem**: "Output 'data/raw' is already tracked by SCM"
+
+```bash
+# Solution: Remove from Git tracking first
+git rm -r --cached data/raw
+dvc add data/raw
+```
+
+**Problem**: Data files not found after `git clone`
+
+```bash
+# Solution: Pull data from DVC remote
+dvc pull
+```
+
 ### Module Import Errors
 
 **Problem**: `ModuleNotFoundError: No module named 'src'`
@@ -600,18 +777,20 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Dataset: Telecom Customer Churn Dataset (IBM Sample Data)
 - Course: CMPT 2500 - ML/AI Deployment, NorQuest College
-- Instructor: [Your Name]
+- Data Version Control: DVC with DagsHub remote storage
+- Instructor: Mohammad Mahdi Ajallooeian
 
 ## Contact
 
 For questions, issues, or contributions:
 
 - Create an issue on GitHub
-- Email: [your-email]
-- Office Hours: [schedule]
+- Course instructor: Mohammad Mahdi Ajallooeian
+- DagsHub username: ajallooe (for data access requests)
 
 ---
 
 **Last Updated**: October 2024  
-**Version**: 2.0.0 (Lab 02 Complete)  
-**Python Version**: 3.12.12
+**Version**: 2.1.0 (Lab 02 - DVC Complete)  
+**Python Version**: 3.12.12  
+**DVC Version**: 3.63.0

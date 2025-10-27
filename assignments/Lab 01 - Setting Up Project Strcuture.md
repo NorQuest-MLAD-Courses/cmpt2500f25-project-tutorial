@@ -3487,3 +3487,7 @@ class EnsemblePredictor:
 ```
 
 ---
+
+*Lab 01 Instructions*  
+*CMPT 2500: Machine Learning Deployment and Software Development*  
+*NorQuest College*
