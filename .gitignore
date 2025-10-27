@@ -150,11 +150,18 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# Outputs
+# Output files (keep directory, ignore contents)
+outputs/*.json
+outputs/*.npy
+outputs/*.csv
+outputs/*.pkl
 outputs/*.png
 outputs/*.jpg
 outputs/*.pdf
 outputs/*.html
+# But keep the directory structure
+!outputs/.gitkeep
+
 
 # Logs and reports
 logs/
@@ -191,6 +198,12 @@ configs/*_temp.yaml
 tests/outputs/
 tests/temp/
 test_results/
+
+# Models in any test directories
+test_*/models/
+test_*/*.pkl
+test_*/*.npy
+test_*/*.json
 
 # Profiling outputs
 *.prof
@@ -256,3 +269,4 @@ logs/
 
 # Feather files
 *.feather
+
