@@ -1,6 +1,7 @@
 """
 Model training module for telecom churn prediction.
 Contains functions to train various classification models with hyperparameter tuning.
+Now includes MLflow experiment tracking.
 """
 
 # Standard library imports
@@ -12,6 +13,8 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 # Third-party imports
+import mlflow
+import mlflow.sklearn
 import numpy as np
 from sklearn.ensemble import (
     AdaBoostClassifier,
@@ -20,6 +23,14 @@ from sklearn.ensemble import (
     VotingClassifier
 )
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    confusion_matrix
+)
 from sklearn.model_selection import GridSearchCV
 from sklearn.tree import DecisionTreeClassifier
 
@@ -59,6 +70,9 @@ def train_logistic_regression(
             'max_iter': [1000]
         }
         
+        # Log parameter grid to MLflow
+        mlflow.log_param("param_grid", str(param_grid))
+        
         base_model = LogisticRegression(random_state=RANDOM_STATE)
         grid_search = GridSearchCV(
             base_model,
@@ -73,8 +87,18 @@ def train_logistic_regression(
         logger.info(f"Best parameters: {grid_search.best_params_}")
         logger.info(f"Best cross-validation score: {grid_search.best_score_:.4f}")
         
+        # Log best parameters and CV score to MLflow
+        for param_name, param_value in grid_search.best_params_.items():
+            mlflow.log_param(f"best_{param_name}", param_value)
+        mlflow.log_metric("cv_best_score", grid_search.best_score_)
+        
         model = grid_search.best_estimator_
     else:
+        # Log default parameters to MLflow
+        default_params = {'C': 1.0, 'max_iter': 1000, 'penalty': 'l2', 'solver': 'lbfgs'}
+        for key, value in default_params.items():
+            mlflow.log_param(key, value)
+        
         model = LogisticRegression(max_iter=1000, random_state=RANDOM_STATE, **kwargs)
         model.fit(X_train, y_train)
     
@@ -112,6 +136,9 @@ def train_random_forest(
             'max_features': ['sqrt', 'log2']
         }
         
+        # Log parameter grid to MLflow
+        mlflow.log_param("param_grid", str(param_grid))
+        
         base_model = RandomForestClassifier(random_state=RANDOM_STATE)
         grid_search = GridSearchCV(
             base_model,
@@ -126,8 +153,19 @@ def train_random_forest(
         logger.info(f"Best parameters: {grid_search.best_params_}")
         logger.info(f"Best cross-validation score: {grid_search.best_score_:.4f}")
         
+        # Log best parameters and CV score to MLflow
+        for param_name, param_value in grid_search.best_params_.items():
+            mlflow.log_param(f"best_{param_name}", param_value)
+        mlflow.log_metric("cv_best_score", grid_search.best_score_)
+        
         model = grid_search.best_estimator_
     else:
+        # Log default parameters to MLflow
+        default_params = {'n_estimators': 100, 'max_depth': None, 'min_samples_split': 2, 
+                         'min_samples_leaf': 1, 'max_features': 'sqrt'}
+        for key, value in default_params.items():
+            mlflow.log_param(key, value)
+        
         if 'random_state' not in kwargs:
             kwargs['random_state'] = RANDOM_STATE
         
@@ -167,6 +205,9 @@ def train_decision_tree(
             'criterion': ['gini', 'entropy']
         }
         
+        # Log parameter grid to MLflow
+        mlflow.log_param("param_grid", str(param_grid))
+        
         base_model = DecisionTreeClassifier(random_state=RANDOM_STATE)
         grid_search = GridSearchCV(
             base_model,
@@ -181,8 +222,19 @@ def train_decision_tree(
         logger.info(f"Best parameters: {grid_search.best_params_}")
         logger.info(f"Best cross-validation score: {grid_search.best_score_:.4f}")
         
+        # Log best parameters and CV score to MLflow
+        for param_name, param_value in grid_search.best_params_.items():
+            mlflow.log_param(f"best_{param_name}", param_value)
+        mlflow.log_metric("cv_best_score", grid_search.best_score_)
+        
         model = grid_search.best_estimator_
     else:
+        # Log default parameters to MLflow
+        default_params = {'max_depth': None, 'min_samples_split': 2, 
+                         'min_samples_leaf': 1, 'criterion': 'gini'}
+        for key, value in default_params.items():
+            mlflow.log_param(key, value)
+        
         if 'random_state' not in kwargs:
             kwargs['random_state'] = RANDOM_STATE
         
@@ -221,6 +273,9 @@ def train_adaboost(
             'algorithm': ['SAMME', 'SAMME.R']
         }
         
+        # Log parameter grid to MLflow
+        mlflow.log_param("param_grid", str(param_grid))
+        
         base_model = AdaBoostClassifier(random_state=RANDOM_STATE)
         grid_search = GridSearchCV(
             base_model,
@@ -235,8 +290,18 @@ def train_adaboost(
         logger.info(f"Best parameters: {grid_search.best_params_}")
         logger.info(f"Best cross-validation score: {grid_search.best_score_:.4f}")
         
+        # Log best parameters and CV score to MLflow
+        for param_name, param_value in grid_search.best_params_.items():
+            mlflow.log_param(f"best_{param_name}", param_value)
+        mlflow.log_metric("cv_best_score", grid_search.best_score_)
+        
         model = grid_search.best_estimator_
     else:
+        # Log default parameters to MLflow
+        default_params = {'n_estimators': 50, 'learning_rate': 1.0, 'algorithm': 'SAMME.R'}
+        for key, value in default_params.items():
+            mlflow.log_param(key, value)
+        
         if 'random_state' not in kwargs:
             kwargs['random_state'] = RANDOM_STATE
         
@@ -277,6 +342,9 @@ def train_gradient_boosting(
             'subsample': [0.8, 0.9, 1.0]
         }
         
+        # Log parameter grid to MLflow
+        mlflow.log_param("param_grid", str(param_grid))
+        
         base_model = GradientBoostingClassifier(random_state=RANDOM_STATE)
         grid_search = GridSearchCV(
             base_model,
@@ -291,8 +359,19 @@ def train_gradient_boosting(
         logger.info(f"Best parameters: {grid_search.best_params_}")
         logger.info(f"Best cross-validation score: {grid_search.best_score_:.4f}")
         
+        # Log best parameters and CV score to MLflow
+        for param_name, param_value in grid_search.best_params_.items():
+            mlflow.log_param(f"best_{param_name}", param_value)
+        mlflow.log_metric("cv_best_score", grid_search.best_score_)
+        
         model = grid_search.best_estimator_
     else:
+        # Log default parameters to MLflow
+        default_params = {'n_estimators': 100, 'learning_rate': 0.1, 'max_depth': 3, 
+                         'min_samples_split': 2, 'subsample': 1.0}
+        for key, value in default_params.items():
+            mlflow.log_param(key, value)
+        
         if 'random_state' not in kwargs:
             kwargs['random_state'] = RANDOM_STATE
         
@@ -323,6 +402,10 @@ def train_voting_classifier(
     """
     logger.info("Training Voting Classifier (Ensemble)...")
     
+    # Log ensemble composition to MLflow
+    mlflow.log_param("voting_strategy", voting)
+    mlflow.log_param("ensemble_models", "GradientBoosting + LogisticRegression + AdaBoost")
+    
     # Create base estimators
     clf1 = GradientBoostingClassifier(random_state=RANDOM_STATE)
     clf2 = LogisticRegression(max_iter=1000, random_state=RANDOM_STATE)
@@ -342,6 +425,47 @@ def train_voting_classifier(
     
     logger.info("Voting Classifier training completed")
     return model
+
+
+def evaluate_model(model: Any, X_test: np.ndarray, y_test: np.ndarray) -> Dict[str, float]:
+    """
+    Evaluate model and return metrics.
+    
+    Args:
+        model: Trained model
+        X_test: Test features
+        y_test: Test labels
+        
+    Returns:
+        Dictionary of evaluation metrics
+    """
+    # Get predictions
+    y_pred = model.predict(X_test)
+    
+    # Calculate metrics
+    metrics = {
+        'accuracy': accuracy_score(y_test, y_pred),
+        'precision': precision_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0),
+        'recall': recall_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0),
+        'f1_score': f1_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0)
+    }
+    
+    # Calculate ROC-AUC if model supports predict_proba
+    if hasattr(model, 'predict_proba'):
+        y_proba = model.predict_proba(X_test)[:, 1]
+        metrics['roc_auc'] = roc_auc_score(y_test == 'Yes', y_proba)
+    
+    # Calculate confusion matrix components
+    cm = confusion_matrix(y_test, y_pred)
+    tn, fp, fn, tp = cm.ravel()
+    metrics.update({
+        'true_negatives': int(tn),
+        'false_positives': int(fp),
+        'false_negatives': int(fn),
+        'true_positives': int(tp)
+    })
+    
+    return metrics
 
 
 def train_all_models(
@@ -377,7 +501,7 @@ def train_all_models(
 
 def save_model(model: Any, model_name: str, output_dir: str = MODELS_PATH) -> str:
     """
-    Save trained model to disk using pickle/joblib.
+    Save trained model to disk using pickle.
     
     Args:
         model: Trained model object
@@ -426,10 +550,10 @@ def save_all_models(models: Dict[str, Any], output_dir: str = MODELS_PATH) -> Di
 
 def main():
     """
-    Main function for CLI training.
+    Main function for CLI training with MLflow tracking.
     """
     parser = argparse.ArgumentParser(
-        description='Train machine learning models for telecom churn prediction'
+        description='Train machine learning models for telecom churn prediction with MLflow tracking'
     )
     
     parser.add_argument(
@@ -468,46 +592,194 @@ def main():
         help=f'Directory to save trained models (default: {MODELS_PATH})'
     )
     
+    parser.add_argument(
+        '--experiment-name',
+        type=str,
+        default='telecom-churn-prediction',
+        help='MLflow experiment name (default: telecom-churn-prediction)'
+    )
+    
     args = parser.parse_args()
+    
+    # Set MLflow experiment
+    mlflow.set_experiment(args.experiment_name)
+    logger.info(f"MLflow experiment: {args.experiment_name}")
     
     # Load preprocessed data
     logger.info(f"Loading data from {args.data}")
     data = np.load(args.data, allow_pickle=True).item()
     X_train = data['X_train']
     y_train = data['y_train']
+    X_test = data['X_test']
+    y_test = data['y_test']
     
     logger.info(f"Training set size: {X_train.shape}")
+    logger.info(f"Test set size: {X_test.shape}")
     
     # Train models
     if args.model == 'all':
-        models = train_all_models(X_train, y_train, tune_hyperparameters=args.tune)
-        saved_paths = save_all_models(models, args.output_dir)
+        # Train all models, each in its own MLflow run
+        models = {}
+        saved_paths = {}
         
-        print("\nTrained and saved models:")
+        model_names = [
+            'logistic_regression',
+            'random_forest',
+            'decision_tree',
+            'adaboost',
+            'gradient_boosting',
+            'voting_classifier'
+        ]
+        
+        for model_name in model_names:
+            run_name = f"{model_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            
+            with mlflow.start_run(run_name=run_name):
+                start_time = datetime.now()
+                
+                # Log tags
+                mlflow.set_tag("model_type", model_name)
+                mlflow.set_tag("tuning", "enabled" if args.tune else "disabled")
+                
+                # Log basic parameters
+                mlflow.log_param("model_type", model_name)
+                mlflow.log_param("tune_hyperparameters", args.tune)
+                mlflow.log_param("random_state", RANDOM_STATE)
+                
+                # Train model
+                logger.info(f"\n{'='*60}")
+                logger.info(f"Training {model_name}...")
+                logger.info(f"{'='*60}")
+                
+                model_trainers = {
+                    'logistic_regression': train_logistic_regression,
+                    'random_forest': train_random_forest,
+                    'decision_tree': train_decision_tree,
+                    'adaboost': train_adaboost,
+                    'gradient_boosting': train_gradient_boosting,
+                    'voting_classifier': train_voting_classifier
+                }
+                
+                trainer = model_trainers[model_name]
+                
+                if model_name == 'voting_classifier':
+                    model = trainer(X_train, y_train)
+                else:
+                    model = trainer(X_train, y_train, tune_hyperparameters=args.tune)
+                
+                # Evaluate model
+                metrics = evaluate_model(model, X_test, y_test)
+                
+                # Log metrics to MLflow
+                for metric_name, metric_value in metrics.items():
+                    mlflow.log_metric(metric_name, metric_value)
+                
+                # Calculate training time
+                elapsed = datetime.now() - start_time
+                mlflow.log_metric("training_time_seconds", elapsed.total_seconds())
+                
+                # Save model locally
+                model_path = save_model(model, model_name, args.output_dir)
+                saved_paths[model_name] = model_path
+                models[model_name] = model
+                
+                # Log model to MLflow
+                mlflow.sklearn.log_model(model, "model")
+                
+                # Log local model file as artifact
+                mlflow.log_artifact(model_path, "local_models")
+                
+                # Print results
+                logger.info(f"\n{'='*60}")
+                logger.info(f"Results for {model_name}")
+                logger.info(f"{'='*60}")
+                logger.info(f"Accuracy:  {metrics['accuracy']:.4f}")
+                logger.info(f"Precision: {metrics['precision']:.4f}")
+                logger.info(f"Recall:    {metrics['recall']:.4f}")
+                logger.info(f"F1-Score:  {metrics['f1_score']:.4f}")
+                if 'roc_auc' in metrics:
+                    logger.info(f"ROC-AUC:   {metrics['roc_auc']:.4f}")
+                logger.info(f"Training time: {elapsed.total_seconds():.2f}s")
+                logger.info(f"Model saved: {model_path}")
+                logger.info(f"MLflow run ID: {mlflow.active_run().info.run_id}")
+                logger.info(f"{'='*60}\n")
+        
+        print("\n" + "="*60)
+        print("All models trained and saved:")
+        print("="*60)
         for name, path in saved_paths.items():
             print(f"  - {name}: {path}")
+        print("="*60)
+        
     else:
         # Train single model
-        model_trainers = {
-            'logistic_regression': train_logistic_regression,
-            'random_forest': train_random_forest,
-            'decision_tree': train_decision_tree,
-            'adaboost': train_adaboost,
-            'gradient_boosting': train_gradient_boosting,
-            'voting_classifier': train_voting_classifier
-        }
+        run_name = f"{args.model}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        trainer = model_trainers[args.model]
-        
-        if args.model == 'voting_classifier':
-            model = trainer(X_train, y_train)
-        else:
-            model = trainer(X_train, y_train, tune_hyperparameters=args.tune)
-        
-        model_path = save_model(model, args.model, args.output_dir)
-        print(f"\nTrained and saved {args.model}: {model_path}")
+        with mlflow.start_run(run_name=run_name):
+            start_time = datetime.now()
+            
+            # Log tags
+            mlflow.set_tag("model_type", args.model)
+            mlflow.set_tag("tuning", "enabled" if args.tune else "disabled")
+            
+            # Log basic parameters
+            mlflow.log_param("model_type", args.model)
+            mlflow.log_param("tune_hyperparameters", args.tune)
+            mlflow.log_param("random_state", RANDOM_STATE)
+            
+            # Train model
+            model_trainers = {
+                'logistic_regression': train_logistic_regression,
+                'random_forest': train_random_forest,
+                'decision_tree': train_decision_tree,
+                'adaboost': train_adaboost,
+                'gradient_boosting': train_gradient_boosting,
+                'voting_classifier': train_voting_classifier
+            }
+            
+            trainer = model_trainers[args.model]
+            
+            if args.model == 'voting_classifier':
+                model = trainer(X_train, y_train)
+            else:
+                model = trainer(X_train, y_train, tune_hyperparameters=args.tune)
+            
+            # Evaluate model
+            metrics = evaluate_model(model, X_test, y_test)
+            
+            # Log metrics to MLflow
+            for metric_name, metric_value in metrics.items():
+                mlflow.log_metric(metric_name, metric_value)
+            
+            # Calculate training time
+            elapsed = datetime.now() - start_time
+            mlflow.log_metric("training_time_seconds", elapsed.total_seconds())
+            
+            # Save model locally
+            model_path = save_model(model, args.model, args.output_dir)
+            
+            # Log model to MLflow
+            mlflow.sklearn.log_model(model, "model")
+            
+            # Log local model file as artifact
+            mlflow.log_artifact(model_path, "local_models")
+            
+            # Print results
+            print(f"\nTrained and saved {args.model}: {model_path}")
+            print(f"\nMetrics:")
+            print(f"  Accuracy:  {metrics['accuracy']:.4f}")
+            print(f"  Precision: {metrics['precision']:.4f}")
+            print(f"  Recall:    {metrics['recall']:.4f}")
+            print(f"  F1-Score:  {metrics['f1_score']:.4f}")
+            if 'roc_auc' in metrics:
+                print(f"  ROC-AUC:   {metrics['roc_auc']:.4f}")
+            print(f"  Training time: {elapsed.total_seconds():.2f}s")
+            print(f"\nMLflow run ID: {mlflow.active_run().info.run_id}")
     
+    logger.info("\n" + "="*60)
     logger.info("Training completed successfully!")
+    logger.info("View experiments: mlflow ui --host 0.0.0.0 --port 5000")
+    logger.info("="*60)
 
 
 if __name__ == '__main__':

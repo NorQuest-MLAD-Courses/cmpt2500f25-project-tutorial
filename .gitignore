@@ -70,6 +70,7 @@ instance/
 docs/_build/
 
 # PyBuilder
+.pybuilder/
 target/
 
 # Jupyter Notebook
@@ -85,6 +86,12 @@ ipython_config.py
 
 # pipenv
 Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
 
 # PEP 582
 __pypackages__/
@@ -123,22 +130,42 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# IDEs
-.vscode/
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
 .idea/
-*.swp
-*.swo
-*~
 
-# OS
+# VS Code
+.vscode/
+
+# macOS
 .DS_Store
-Thumbs.db
 
-# Project specific
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Outputs
 outputs/*.png
 outputs/*.jpg
 outputs/*.pdf
+outputs/*.html
+
+# Logs and reports
 logs/
+
+# Development artifacts (don't commit)
+scratch/
+
+# Data files (tracked by DVC, not Git)
+data/raw/
+data/processed/
+data/external/
 
 # Exclude example/sample data (keep directory structure)
 !data/raw/.gitkeep
@@ -146,8 +173,14 @@ logs/
 !models/.gitkeep
 !outputs/.gitkeep
 
-# Development artifacts (don't commit)
-scratch/
+# NOTE: Small example/test data files can be kept in Git
+# !data/raw/sample.csv
+# !data/processed/test_data.npy
+
+# DVC
+.dvc/cache/
+.dvc/tmp/
+.dvc/config.local
 
 # Temporary config files (allow local overrides without committing)
 configs/*.local.yaml
@@ -163,7 +196,63 @@ test_results/
 *.prof
 *.lprof
 
-# ============================================================
-# Note: DVC and MLflow sections will be added later
-# when we implement those features in subsequent labs
-# ============================================================
+# Models (tracked by DVC or MLflow, not Git)
+models/*.pkl
+models/*.joblib
+models/*.h5
+models/*.pt
+models/*.pth
+models/*.onnx
+
+# NOTE: Can keep very small models for testing
+# !models/test_model.pkl
+
+# MLflow (Experiment Tracking)
+mlruns/
+mlflow-artifacts/
+mlartifacts/
+mlflow.db
+mlflow.db-shm
+mlflow.db-wal
+.mlflow/
+*.mlflow
+
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Large files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# CSV files (usually data - DVC tracked)
+*.csv
+
+# Excel files
+*.xlsx
+*.xls
+
+# Pickle files (usually models - DVC/MLflow tracked)
+*.pkl
+*.pickle
+
+# HDF5 files
+*.h5
+*.hdf5
+
+# Parquet files
+*.parquet
+
+# Feather files
+*.feather

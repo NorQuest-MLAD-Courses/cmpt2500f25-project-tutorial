@@ -1,39 +1,83 @@
-# CMPT 2500 Project Tutorial: Telecom Customer Churn Prediction
+# CMPT 2500 Project: Telecom Customer Churn Prediction
 
-A production-ready machine learning project to predict customer churn in the telecommunications industry. This project demonstrates industry best practices including modular code organization, CLI interfaces, hyperparameter tuning, data versioning with DVC, experiment tracking, and more.
+A production-ready machine learning project demonstrating industry best practices for MLOps, including modular code organization, data version control (DVC), experiment tracking (MLflow), and automated workflows.
 
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.7.2-orange.svg)](https://scikit-learn.org/)
 [![DVC](https://img.shields.io/badge/DVC-3.63.0-945DD6.svg)](https://dvc.org/)
-[![Code style: PEP 8](https://img.shields.io/badge/code%20style-PEP%208-black.svg)](https://www.python.org/dev/peps/pep-0008/)
+[![MLflow](https://img.shields.io/badge/MLflow-3.5.1-0194E2.svg)](https://mlflow.org/)
 
 ## Overview
 
-Customer churn prediction helps telecom companies identify customers who are likely to discontinue their services. By predicting churn, companies can take proactive measures to retain customers, reducing the cost of acquiring new customers (which is typically 5 times more expensive than retaining existing ones).
+Customer churn prediction for telecommunications companies. By predicting which customers are likely to leave, companies can take proactive retention measures—reducing costs since customer acquisition is typically 5× more expensive than retention.
 
-This project showcases a complete ML workflow from data preprocessing to model deployment, incorporating:
+This project demonstrates a complete ML workflow from data preprocessing to model deployment, incorporating:
 
 - 🏗️ **Modular architecture** with separation of concerns
-- 🖥️ **CLI interfaces** for all major operations
-- 🔧 **Hyperparameter tuning** for optimal model performance
+- 🖥️ **CLI interfaces** for all operations
+- 🔧 **Hyperparameter tuning** for optimal performance
 - 📝 **YAML configuration** for flexible deployment
-- 📦 **Data version control (DVC)** with DagsHub
-- 📊 **Experiment tracking** with MLflow
+- 📦 **Data version control (DVC)** with DagsHub remote
+- 📊 **Experiment tracking (MLflow)** with comprehensive logging
 - 🧪 **Automated testing** with pytest
 - 🐍 **Virtual environments** for reproducibility
 
+---
+
+## Quick Start
+
+```bash
+# 1. Clone repository
+git clone https://github.com/your-username/telecom-churn-prediction.git
+cd telecom-churn-prediction
+
+# 2. Set up virtual environment
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Authenticate with DagsHub (for data access)
+dagshub login
+# Select token timeframe: "2 months"
+
+# 5. Pull data from DVC remote
+dvc pull
+
+# 6. Preprocess data
+python -m src.preprocess --input data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
+
+# 7. Train model (with MLflow tracking)
+python -m src.train --data data/processed/preprocessed_data.npy --model random_forest --tune
+
+# 8. View experiments in MLflow UI
+mlflow ui --host 0.0.0.0 --port 5000
+# In CodeSpaces: PORTS tab → Forward port 5000 → Open in Browser
+
+# 9. Make predictions
+python -m src.predict --model models/random_forest_*.pkl --data data/processed/preprocessed_data.npy
+
+# 10. Evaluate model
+python -m src.evaluate --model models/random_forest_*.pkl --data data/processed/preprocessed_data.npy
+```
+
+---
+
 ## Project Structure
 
-```
-cmpt2500f25-project-tutorial/
+```output
+telecom-churn-prediction/
 ├── .venv/                      # Virtual environment (not in Git)
 ├── .dvc/                       # DVC configuration
 │   ├── config                  # DVC remote config (in Git)
 │   └── config.local            # Credentials (NOT in Git)
+├── mlruns/                     # MLflow tracking data (NOT in Git)
+│   └── 0/                      # Experiment ID
+│       └── <run_id>/           # Individual runs with metrics/params/artifacts
 ├── configs/                    # YAML configuration files
-│   ├── train_config.yaml
-│   ├── preprocess_config.yaml
-│   └── predict_config.yaml
+│   ├── train_config.yaml       # Training configuration & hyperparameters
+│   └── preprocess_config.yaml  # Data preprocessing configuration
 ├── data/
 │   ├── .gitignore              # DVC-generated (ignores actual data)
 │   ├── raw.dvc                 # DVC metadata for raw data (in Git)
@@ -44,465 +88,29 @@ cmpt2500f25-project-tutorial/
 │       ├── preprocessed_data.npy
 │       ├── preprocessing_pipeline.pkl
 │       └── label_encoder.pkl
-├── models/                     # Trained models (can be tracked by DVC)
+├── models/                     # Trained models (tracked by MLflow)
 ├── notebooks/                  # Jupyter notebooks for exploration
-│   ├── proof_of_concept.ipynb
-│   ├── eda.ipynb
-│   └── model_experimentation.ipynb
+│   └── proof_of_concept.ipynb
 ├── src/
 │   ├── __init__.py
-│   ├── preprocess.py          # Data preprocessing with sklearn pipelines
-│   ├── train.py               # Model training with hyperparameter tuning
-│   ├── predict.py             # Prediction with CLI
-│   ├── evaluate.py            # Model evaluation
-│   ├── feature_engineering.py # Feature creation & selection
+│   ├── preprocess.py           # Data preprocessing with sklearn pipelines
+│   ├── train.py                # Model training with MLflow tracking ⭐
+│   ├── predict.py              # Prediction CLI
+│   ├── evaluate.py             # Model evaluation
 │   └── utils/
 │       ├── __init__.py
-│       └── config.py          # Configuration constants
+│       └── config.py           # Configuration constants
 ├── tests/                      # Unit tests
 │   ├── test_preprocess.py
 │   ├── test_train.py
 │   └── test_predict.py
-├── outputs/                    # Plots, reports, results
-├── experiments/                # Experiment notes
-├── .gitignore
-├── .dvcignore
+├── .gitignore                  # Git ignore (includes mlruns/, .dvc/cache/)
+├── .dvcignore                  # DVC ignore patterns
 ├── requirements.txt            # Python dependencies
-└── README.md
+└── README.md                   # This file
 ```
 
-## Dataset Features
-
-The dataset includes the following features:
-
-**Demographics**:
-
-- Gender, Senior Citizen status, Partner, Dependents
-
-**Services**:
-
-- Phone Service, Multiple Lines, Internet Service, Online Security, Online Backup, Device Protection, Tech Support, Streaming TV, Streaming Movies
-
-**Account Information**:
-
-- Tenure, Contract type, Payment method, Paperless billing, Monthly charges, Total charges
-
-**Target**:
-
-- Churn (Yes/No) - Binary classification
-
-## Models Implemented
-
-1. **Logistic Regression** - Baseline linear model
-2. **Random Forest Classifier** - Ensemble of decision trees
-3. **Decision Tree Classifier** - Single decision tree
-4. **AdaBoost Classifier** - Adaptive boosting ensemble
-5. **Gradient Boosting Classifier** - Gradient boosting ensemble
-6. **Voting Classifier** - Ensemble combining multiple models
-
-All models support:
-
-- ⚙️ **Hyperparameter tuning** with GridSearchCV
-- 📊 **Cross-validation** for robust evaluation
-- 💾 **Model persistence** with joblib
-- 📈 **Experiment tracking** with MLflow
-
-## Installation
-
-### Prerequisites
-
-- Python 3.12.x (recommended)
-- Git
-- pip
-- DVC (for data versioning)
-
-**Note**: Python 3.13 is available but some packages may not be fully compatible. Stick with Python 3.12.x for maximum compatibility.
-
-### Setup Instructions
-
-1. **Clone the repository**:
-
-   ```bash
-   git clone https://github.com/NorQuest-MLAD-Courses/cmpt2500f25-project-tutorial.git
-   cd cmpt2500f25-project-tutorial
-   ```
-
-2. **Create virtual environment**:
-
-   ```bash
-   # Create virtual environment
-   python -m venv .venv
-   
-   # Activate it
-   source .venv/bin/activate  # Mac/Linux
-   # OR
-   .venv\Scripts\activate     # Windows
-   ```
-
-3. **Install dependencies**:
-
-   ```bash
-   pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
-
-4. **Configure DVC remote (DagsHub)**:
-
-   ```bash
-   # Install DagsHub CLI tools
-   pip install dagshub --upgrade
-   
-   # Authenticate with DagsHub (opens browser)
-   dagshub login
-   ```
-   
-   **Note:** 
-   - Select token expiration timeframe (e.g., 3 months for course duration)
-   - If you create a new CodeSpaces instance, run `dagshub login` again
-   - See **Data Version Control** section below for complete setup
-
-5. **Verify installation**:
-
-   ```bash
-   python -c "import sklearn; import dvc; print('✅ All packages installed!')"
-   ```
-
-6. **Pull data from DVC remote** (DagsHub):
-
-   ```bash
-   # Pull data and models from DVC remote storage
-   dvc pull
-   ```
-
-   **Note:** Data is stored in DagsHub remote storage, not in Git. The `dvc pull` command downloads the actual data files to your local machine.
-
-## Usage
-
-### Quick Start
-
-```bash
-# 1. Activate virtual environment
-source .venv/bin/activate
-
-# 2. Pull data from DVC (if not already done)
-dvc pull
-
-# 3. Preprocess data (creates sklearn pipeline)
-python -m src.preprocess --input data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
-
-# 4. Train model (with hyperparameter tuning)
-python -m src.train --data data/processed/preprocessed_data.npy --model random_forest --tune
-
-# 5. Make predictions
-python -m src.predict --model models/random_forest_*.pkl --data data/processed/preprocessed_data.npy
-
-# 6. Evaluate model
-python -m src.evaluate --model models/random_forest_*.pkl --data data/processed/preprocessed_data.npy
-```
-
-### Data Preprocessing
-
-The preprocessing module uses **scikit-learn pipelines** for reproducible preprocessing:
-
-```bash
-# Basic preprocessing
-python -m src.preprocess \
-    --input data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv \
-    --output-dir data/processed
-
-# Use legacy approach (not recommended)
-python -m src.preprocess \
-    --input data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv \
-    --legacy
-
-# Get help
-python -m src.preprocess --help
-```
-
-**What it does**:
-
-- Loads raw data from CSV
-- Handles missing values
-- Encodes categorical features
-- Scales numerical features
-- Splits into train/test sets
-- Saves preprocessing pipeline for consistent predictions
-
-**Output files**:
-
-- `preprocessed_data.npy` - Train/test data
-- `preprocessing_pipeline.pkl` - Sklearn pipeline
-- `label_encoder.pkl` - Target encoder
-
-### Model Training
-
-```bash
-# Train single model (fast, default hyperparameters)
-python -m src.train \
-    --data data/processed/preprocessed_data.npy \
-    --model random_forest
-
-# Train with hyperparameter tuning (slower, better performance)
-python -m src.train \
-    --data data/processed/preprocessed_data.npy \
-    --model random_forest \
-    --tune
-
-# Train all models
-python -m src.train \
-    --data data/processed/preprocessed_data.npy \
-    --model all
-
-# Train all with tuning (will take time!)
-python -m src.train \
-    --data data/processed/preprocessed_data.npy \
-    --model all \
-    --tune
-
-# Get help
-python -m src.train --help
-```
-
-**Available models**:
-
-- `logistic_regression`
-- `random_forest`
-- `decision_tree`
-- `adaboost`
-- `gradient_boosting`
-- `voting_classifier`
-- `all` (trains all models)
-
-**Hyperparameter Tuning**:
-When `--tune` flag is used, GridSearchCV performs exhaustive search over parameter grid with 5-fold cross-validation. This significantly improves model performance but takes longer.
-
-### Making Predictions
-
-```bash
-# Predict with trained model
-python -m src.predict \
-    --model models/random_forest_20241027_143530.pkl \
-    --data data/processed/preprocessed_data.npy
-
-# Get probability predictions
-python -m src.predict \
-    --model models/random_forest_20241027_143530.pkl \
-    --data data/processed/preprocessed_data.npy \
-    --proba
-
-# Save predictions to file
-python -m src.predict \
-    --model models/random_forest_20241027_143530.pkl \
-    --data data/processed/preprocessed_data.npy \
-    --output predictions/predictions.npy
-
-# Predict with preprocessing pipeline
-python -m src.predict \
-    --model models/model.pkl \
-    --data data/raw/new_data.csv \
-    --pipeline data/processed/preprocessing_pipeline.pkl
-
-# Get help
-python -m src.predict --help
-```
-
-### Model Evaluation
-
-```bash
-# Evaluate model
-python -m src.evaluate \
-    --model models/random_forest_20241027_143530.pkl \
-    --data data/processed/preprocessed_data.npy \
-    --model-name "Random Forest"
-
-# Save evaluation results
-python -m src.evaluate \
-    --model models/random_forest_20241027_143530.pkl \
-    --data data/processed/preprocessed_data.npy \
-    --output evaluation_results.json
-
-# Get help
-python -m src.evaluate --help
-```
-
-**Metrics calculated**:
-
-- Accuracy, Precision, Recall, F1-Score
-- ROC-AUC (if model supports probabilities)
-- Confusion Matrix
-- Classification Report
-
-## Data Version Control (DVC)
-
-This project uses **DVC** for versioning data and models, with **DagsHub** as the remote storage.
-
-**DagsHub Repository:** https://dagshub.com/ajallooe/cmpt2500f25-project-tutorial
-
-### Why DVC?
-
-- ✅ Version control for large files (data, models)
-- ✅ Lightweight metadata in Git
-- ✅ Cloud storage for actual data (DagsHub S3-compatible)
-- ✅ Easy collaboration
-- ✅ Reproducible experiments
-
-### DVC Workflow
-
-**Initial setup (already done):**
-```bash
-# Install DagsHub CLI and authenticate
-pip install dagshub --upgrade
-dagshub login  # Choose token expiration (e.g., 3 months)
-
-# Initialize DVC
-dvc init
-dvc remote add origin s3://dvc
-dvc remote modify origin endpointurl https://dagshub.com/user/repo.s3
-dvc remote default origin
-```
-
-**Important:** If you create a new CodeSpaces instance, run `dagshub login` again to re-authenticate.
-
-**Pull data (for collaborators):**
-```bash
-# After cloning the repo
-git clone https://github.com/your-repo.git
-cd your-repo
-
-# Pull data from DVC remote
-dvc pull
-```
-
-**Update data (for maintainers):**
-```bash
-# Make changes to data
-python -m src.preprocess --input data/raw/new_data.csv
-
-# Track changes with DVC
-dvc add data/processed
-
-# Commit DVC metadata to Git
-git add data/processed.dvc
-git commit -m "feat: Update processed data"
-git push
-
-# Push actual data to DVC remote
-dvc push
-```
-
-**Check data status:**
-```bash
-# Check if data has changed
-dvc status
-
-# Check if local and remote are in sync
-dvc status -c
-```
-
-### What's Tracked by DVC
-
-| Directory/File | Git | DVC | Description |
-|----------------|-----|-----|-------------|
-| `data/raw/` | ❌ | ✅ | Raw dataset (955KB) |
-| `data/processed/` | ❌ | ✅ | Processed data (1.3MB) |
-| `data/*.dvc` | ✅ | ❌ | DVC metadata files |
-| `models/*.pkl` | ✅ | ❌ | Trained models (can be added to DVC) |
-
-**Note:** Small files like `preprocessing_pipeline.pkl` (48KB) are kept in Git for convenience, but large model files should be tracked with DVC.
-
-## Configuration Management
-
-The project uses YAML files for flexible configuration management.
-
-### Configuration Files
-
-**`configs/train_config.yaml`** - Training settings:
-
-```yaml
-model:
-  type: random_forest
-  params:
-    n_estimators: 100
-    max_depth: 10
-
-training:
-  test_size: 0.2
-  tune: false
-```
-
-**`configs/preprocess_config.yaml`** - Preprocessing settings:
-
-```yaml
-data:
-  filename: WA_Fn-UseC_-Telco-Customer-Churn.csv
-  target_column: Churn
-
-scaling:
-  method: standard
-  
-features:
-  categorical: [gender, Contract, PaymentMethod]
-  numerical: [tenure, MonthlyCharges, TotalCharges]
-```
-
-### Using Configurations
-
-```python
-import yaml
-
-# Load configuration
-with open('configs/train_config.yaml', 'r') as f:
-    config = yaml.safe_load(f)
-
-# Access settings
-model_type = config['model']['type']
-n_estimators = config['model']['params']['n_estimators']
-```
-
-## Model Performance
-
-Typical performance metrics (with hyperparameter tuning):
-
-| Model | Accuracy | Precision | Recall | F1-Score | ROC-AUC |
-|-------|----------|-----------|--------|----------|---------|
-| Voting Classifier | 80.5% | 67.2% | 56.8% | 61.5% | 84.9% |
-| Random Forest | 79.3% | 64.0% | 53.9% | 58.5% | 84.6% |
-| Gradient Boosting | 80.1% | 66.5% | 55.2% | 60.3% | 84.2% |
-| Logistic Regression | 79.8% | 65.8% | 54.1% | 59.4% | 84.1% |
-| AdaBoost | 79.7% | 65.3% | 54.8% | 59.6% | 83.8% |
-| Decision Tree | 73.5% | 53.2% | 48.9% | 50.9% | 71.2% |
-
-**Note**: Performance varies based on data splits and hyperparameter settings.
-
-## Key Insights
-
-Based on the analysis of 7,043 telecom customers:
-
-1. **Contract Type Impact**:
-   - Month-to-month contracts show 42% churn rate
-   - One-year contracts: 11% churn rate
-   - Two-year contracts: 3% churn rate
-   - **Action**: Incentivize longer contract commitments
-
-2. **Tenure Correlation**:
-   - Customers with <12 months tenure: 47% churn
-   - Customers with >48 months tenure: 7% churn
-   - **Action**: Focus retention efforts on new customers (first year)
-
-3. **Service Bundle Effect**:
-   - Customers with phone + internet + protection services: 25% churn
-   - Customers with phone only: 35% churn
-   - **Action**: Promote service bundles for retention
-
-4. **Monthly Charges**:
-   - Charges >$70/month associated with 33% churn
-   - Charges <$30/month associated with 15% churn
-   - **Action**: Review pricing strategy for high-value customers
-
-5. **Payment Method**:
-   - Electronic check users: 45% churn
-   - Credit card / bank transfer: 15-18% churn
-   - **Action**: Encourage automatic payment methods
+---
 
 ## Technology Stack
 
@@ -513,25 +121,19 @@ Based on the analysis of 7,043 telecom customers:
 - NumPy 2.3.4
 - Pandas 2.3.3
 
-**Advanced Models**:
-
-- XGBoost 3.1.1
-- CatBoost 1.2.8
-
 **Data Version Control**:
 
 - DVC 3.63.0
-- DagsHub 0.6.3 (DVC remote)
+- DagsHub 0.6.3 (remote storage)
 
-**Experiment Tracking** (Coming Soon):
+**Experiment Tracking**:
 
-- MLflow 3.5.1
+- MLflow 3.5.1 (tracking, models, artifacts)
 
 **Visualization**:
 
 - Matplotlib 3.10.7
 - Seaborn 0.13.2
-- Plotly 6.3.1
 
 **Configuration**:
 
@@ -540,96 +142,324 @@ Based on the analysis of 7,043 telecom customers:
 **Testing**:
 
 - pytest 8.4.2
-- pytest-cov 7.0.0
 
-**Development**:
+---
 
-- Jupyter 1.1.1
+## Data Version Control (DVC)
 
-## Development Workflow
+This project uses **DVC** to track data and models, with **DagsHub** as the remote storage.
 
-### 1. Experimentation Phase
+**DVC Remote**: [https://dagshub.com/your-username/telecom-churn-prediction](https://dagshub.com/your-username/telecom-churn-prediction)
 
-```bash
-# Use notebooks for exploration
-jupyter notebook notebooks/
-
-# Prototype in notebooks:
-# - EDA (eda.ipynb)
-# - Feature engineering (model_experimentation.ipynb)
-# - Model selection (proof_of_concept.ipynb)
-```
-
-### 2. Development Phase
+### Setup DVC
 
 ```bash
-# Convert notebook code to modules
-# - Extract preprocessing → src/preprocess.py
-# - Extract training → src/train.py
-# - Extract evaluation → src/evaluate.py
+# Install DVC with S3 support
+pip install dvc dvc-s3 dagshub
 
-# Pull latest data
+# Authenticate with DagsHub
+dagshub login
+# Browser opens → Sign in → Select token timeframe → Copy token
+# Paste token in terminal
+
+# Configure DVC remote (already done in repo)
+dvc remote default origin
+dvc remote modify origin url s3://dvc
+dvc remote modify origin endpointurl https://dagshub.com/your-username/repo.s3
+
+# Pull data
 dvc pull
-
-# Test modules individually
-python -m src.preprocess --input data/raw/data.csv
-python -m src.train --data data/processed/preprocessed_data.npy --model random_forest
 ```
 
-### 3. Optimization Phase
+### DVC Workflow
 
 ```bash
-# Enable hyperparameter tuning
-python -m src.train --data data/processed/preprocessed_data.npy --model all --tune
-
-# Compare results
-python -m src.evaluate --model models/model1.pkl --data data/processed/preprocessed_data.npy
-python -m src.evaluate --model models/model2.pkl --data data/processed/preprocessed_data.npy
-```
-
-### 4. Testing Phase
-
-```bash
-# Run unit tests
-pytest tests/
-
-# Check coverage
-pytest --cov=src tests/
-```
-
-### 5. Version Control
-
-```bash
-# Commit code changes to Git
-git add src/
-git commit -m "feat: Add optimized models with tuning"
-git push
-
-# Track data changes with DVC
+# After modifying data
+dvc add data/raw
 dvc add data/processed
-git add data/processed.dvc
-git commit -m "feat: Update processed data"
-git push
 
-# Push data to DVC remote
+# Commit DVC metadata to Git
+git add data/raw.dvc data/processed.dvc .gitignore
+git commit -m "Update data version"
+
+# Push data to DagsHub
 dvc push
+
+# Push code to GitHub
+git push
 ```
+
+**Note**: In CodeSpaces, run `dagshub login` each time you start a new instance (tokens are stored locally).
+
+---
+
+## Experiment Tracking (MLflow)
+
+This project uses **MLflow** for tracking experiments, comparing models, and managing the ML lifecycle.
+
+### MLflow Workflow
+
+**Train with tracking**:
+
+```bash
+# Single model
+python -m src.train \
+    --data data/processed/preprocessed_data.npy \
+    --model random_forest
+
+# With hyperparameter tuning
+python -m src.train \
+    --data data/processed/preprocessed_data.npy \
+    --model random_forest \
+    --tune
+
+# All models for comparison
+python -m src.train \
+    --data data/processed/preprocessed_data.npy \
+    --model all \
+    --tune
+```
+
+**View experiments in UI**:
+
+```bash
+# Start MLflow UI (CodeSpaces: must use 0.0.0.0)
+mlflow ui --host 0.0.0.0 --port 5000
+
+# Access via forwarded port:
+# 1. Open PORTS tab (bottom panel in VS Code)
+# 2. Port 5000 should auto-forward
+# 3. Right-click port 5000 → "Open in Browser"
+```
+
+### What MLflow Tracks
+
+| Item | Tracked? | Description |
+|------|----------|-------------|
+| **Parameters** | ✅ | Model hyperparameters (n_estimators, max_depth, etc.) |
+| **Metrics** | ✅ | accuracy, precision, recall, F1-score, ROC-AUC |
+| **Artifacts** | ✅ | Trained models (.pkl files) |
+| **Training Time** | ✅ | Duration in seconds |
+| **Data Version** | ⚠️ Manual | Tag with DVC version hash |
+| **Source Code** | ✅ | Git commit hash automatically tracked |
+| **Environment** | ✅ | Python version, package versions |
+
+### Load Best Model
+
+```python
+import mlflow.sklearn
+
+# Load by run ID (from MLflow UI)
+model = mlflow.sklearn.load_model("runs:/abc123.../model")
+
+# Or search for best run
+runs = mlflow.search_runs(
+    order_by=["metrics.accuracy DESC"],
+    max_results=1
+)
+best_run_id = runs.iloc[0]['run_id']
+model = mlflow.sklearn.load_model(f"runs:/{best_run_id}/model")
+```
+
+### MLflow in CodeSpaces
+
+**Critical**: CodeSpaces runs on a remote VM. To access MLflow UI:
+
+1. Start server: `mlflow ui --host 0.0.0.0 --port 5000`
+2. Open PORTS tab (bottom panel)
+3. Port 5000 should auto-forward
+4. Right-click port 5000 → "Open in Browser"
+
+---
+
+## Configuration Files
+
+Config files in `configs/` directory:
+
+### train_config.yaml
+
+- Model hyperparameters (for each model type)
+- Training settings (test_size, random_state)
+- MLflow configuration (experiment name, tracking URI)
+- DVC settings (data versioning)
+- Hyperparameter tuning grids
+
+### preprocess_config.yaml
+
+- Data paths and column names
+- Feature scaling methods
+- Missing value handling
+- Train-test split settings
+- Pipeline configuration
+
+**Note**: Config files added in v2.2.0. For older versions, unused sections are ignored. Code works without configs (uses CLI args).
+
+---
+
+## Usage Examples
+
+### 1. Data Preprocessing
+
+```bash
+# Basic preprocessing
+python -m src.preprocess \
+    --input data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
+
+# With custom output directory
+python -m src.preprocess \
+    --input data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv \
+    --output data/processed
+```
+
+### 2. Model Training
+
+```bash
+# Train Random Forest with default hyperparameters
+python -m src.train \
+    --data data/processed/preprocessed_data.npy \
+    --model random_forest
+
+# Train with hyperparameter tuning (GridSearchCV)
+python -m src.train \
+    --data data/processed/preprocessed_data.npy \
+    --model random_forest \
+    --tune
+
+# Train all models
+python -m src.train \
+    --data data/processed/preprocessed_data.npy \
+    --model all
+
+# Train all models with tuning
+python -m src.train \
+    --data data/processed/preprocessed_data.npy \
+    --model all \
+    --tune
+
+# Available models:
+# - logistic_regression
+# - random_forest
+# - decision_tree
+# - adaboost
+# - gradient_boosting
+# - voting_classifier
+```
+
+### 3. Making Predictions
+
+```bash
+# Using trained model
+python -m src.predict \
+    --model models/random_forest_20241027_103045.pkl \
+    --data data/processed/preprocessed_data.npy
+
+# With custom output
+python -m src.predict \
+    --model models/random_forest_*.pkl \
+    --data data/processed/preprocessed_data.npy \
+    --output predictions.csv
+```
+
+### 4. Model Evaluation
+
+```bash
+# Evaluate model
+python -m src.evaluate \
+    --model models/random_forest_20241027_103045.pkl \
+    --data data/processed/preprocessed_data.npy
+
+# Save evaluation report
+python -m src.evaluate \
+    --model models/random_forest_*.pkl \
+    --data data/processed/preprocessed_data.npy \
+    --output outputs/evaluation_report.txt
+```
+
+---
 
 ## Testing
 
 ```bash
 # Run all tests
-pytest tests/
+pytest
 
 # Run with coverage
-pytest --cov=src tests/
+pytest --cov=src --cov-report=html
 
 # Run specific test file
-pytest tests/test_preprocess.py
+pytest tests/test_train.py
 
 # Run with verbose output
-pytest -v tests/
+pytest -v
 ```
+
+---
+
+## Common Issues & Solutions
+
+### DVC Issues
+
+**Problem**: `dvc push` fails with authentication error
+
+```bash
+# Solution: Re-authenticate
+dagshub login
+# Select "2 months" token timeframe
+```
+
+**Problem**: `dvc pull` fails
+
+```bash
+# Check credentials are configured
+cat .dvc/config.local
+
+# If missing, re-authenticate
+dagshub login
+```
+
+**Problem**: Data files not found after `git clone`
+
+```bash
+# Pull data from DVC remote
+dvc pull
+```
+
+### MLflow Issues
+
+**Problem**: MLflow UI not accessible in CodeSpaces
+
+```bash
+# 1. Verify MLflow is running
+mlflow ui --host 0.0.0.0 --port 5000
+
+# 2. Check PORTS tab (bottom panel)
+# - Port 5000 should be listed
+# - If not, click "Forward a Port" → enter 5000
+
+# 3. Right-click port 5000 → "Open in Browser"
+```
+
+**Problem**: Runs not showing in MLflow UI
+
+```bash
+# 1. Refresh browser (F5)
+# 2. Check experiment name matches
+# 3. Verify mlruns/ directory exists
+ls mlruns/
+```
+
+**Problem**: Large mlruns/ directory
+
+```bash
+# Delete old experiments
+mlflow experiments delete --experiment-id 1
+
+# Or delete via UI (select runs → delete button)
+
+# Note: mlruns/ is in .gitignore (won't be committed)
+```
+
+---
 
 ## Project Roadmap
 
@@ -650,147 +480,67 @@ pytest -v tests/
 - Scikit-learn pipelines
 - YAML configuration
 - Unit testing basics
-- **DVC setup with DagsHub**
-- **Data version control**
+- DVC setup with DagsHub
+- Data version control
 
-### 🔜 Upcoming (Lab 02 - Part 2)
+### ✅ Completed (Lab 02 - Part 2)
 
 - MLflow integration
 - Experiment tracking
-- Comprehensive pytest suite
+- Model comparison
+- Configuration files
 
 ### 🔜 Upcoming (Lab 03)
 
-- REST API with Flask/FastAPI
+- REST API development (Flask/FastAPI)
 - API documentation (Swagger)
-- Request/response validation
+- Model serving
 - API testing
 
-### 🔜 Future (Lab 04-06)
+### 🔜 Future Labs
 
-- Docker containerization
+- Containerization (Docker)
 - Cloud deployment (AWS/GCP/Azure)
-- CI/CD pipeline
-- Model monitoring
-- A/B testing
-- Model retraining automation
-
-## Contributing
-
-### Code Style
-
-- Follow PEP 8 style guide
-- Use type hints for all functions
-- Write docstrings (Google style)
-- Organize imports (standard → third-party → local)
-- Use logging instead of print statements
-
-### Testing
-
-- Write tests for new features
-- Maintain >80% code coverage
-- Test edge cases
-- Include integration tests
-
-### Documentation
-
-- Update README for new features
-- Add docstrings to all functions
-- Keep YAML configs in sync
-- Document breaking changes
-
-## Troubleshooting
-
-### Virtual Environment Issues
-
-**Problem**: `command not found: python`
-
-```bash
-# Solution: Activate virtual environment
-source .venv/bin/activate  # Mac/Linux
-.venv\Scripts\activate     # Windows
-```
-
-**Problem**: Package import errors
-
-```bash
-# Solution: Reinstall requirements
-pip install --force-reinstall -r requirements.txt
-```
-
-### DVC Issues
-
-**Problem**: `dvc push` fails with authentication error
-
-```bash
-# Solution: Re-authenticate with DagsHub
-dagshub login
-
-# Or check if credentials are configured
-cat .dvc/config.local
-```
-
-**Note:** In new CodeSpaces instances, you must run `dagshub login` again as the authentication token is stored locally.
-
-**Problem**: `dvc pull` fails
-
-```bash
-# Solution: Check if you have credentials configured
-cat .dvc/config.local
-
-# If missing, authenticate with DagsHub
-dagshub login
-
-# See Lab 02 instructions for complete DagsHub setup
-```
-
-**Problem**: "Output 'data/raw' is already tracked by SCM"
-
-```bash
-# Solution: Remove from Git tracking first
-git rm -r --cached data/raw
-dvc add data/raw
-```
-
-**Problem**: Data files not found after `git clone`
-
-```bash
-# Solution: Pull data from DVC remote
-dvc pull
-```
-
-### Module Import Errors
-
-**Problem**: `ModuleNotFoundError: No module named 'src'`
-
-```bash
-# Solution: Run from project root with -m flag
-cd /path/to/project
-python -m src.train --help
-```
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Dataset: Telecom Customer Churn Dataset (IBM Sample Data)
-- Course: CMPT 2500 - ML/AI Deployment, NorQuest College
-- Data Version Control: DVC with DagsHub remote storage
-- Instructor: Mohammad Mahdi Ajallooeian
-
-## Contact
-
-For questions, issues, or contributions:
-
-- Create an issue on GitHub
-- Course instructor: Mohammad Mahdi Ajallooeian
-- DagsHub username: ajallooe (for data access requests)
+- CI/CD pipelines (GitHub Actions)
+- Monitoring and logging
 
 ---
 
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## License
+
+This project is licensed under the MIT License - see LICENSE file for details.
+
+---
+
+## Acknowledgments
+
+- **Dataset**: [Telco Customer Churn](https://www.kaggle.com/blastchar/telco-customer-churn) from Kaggle
+- **MLflow**: Databricks for the open-source experiment tracking platform
+- **DVC**: Iterative for data version control
+- **DagsHub**: For providing free DVC remote storage and MLflow hosting
+
+---
+
+## Contact
+
+**Instructor**: [Your Name]  
+**Course**: CMPT 2500 - ML/AI Deployment  
+**Institution**: NorQuest College
+
+---
+
+**Version**: 2.2.0 (Lab 02 Complete - DVC + MLflow)  
 **Last Updated**: October 2024  
-**Version**: 2.1.0 (Lab 02 - DVC Complete)  
-**Python Version**: 3.12.12  
-**DVC Version**: 3.63.0
+**Python**: 3.12.12  
+**DVC**: 3.63.0  
+**MLflow**: 3.5.1

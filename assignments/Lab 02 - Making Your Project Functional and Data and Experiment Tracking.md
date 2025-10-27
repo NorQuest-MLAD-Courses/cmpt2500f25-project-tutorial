@@ -2549,16 +2549,534 @@ your-project/
 
 ---
 
-## Next: MLflow for Experiment Tracking
+## Part 8: Experiment Tracking with MLflow
 
-In the next section, we'll add MLflow to track:
+### Introduction: The Experiment Tracking Problem
 
-- Hyperparameters
-- Training metrics
-- Model performance
-- Experiment comparisons
+Imagine you're training multiple machine learning models:
 
-Stay tuned! 🚀
+```text
+Monday: Random Forest, n_estimators=100, max_depth=10 → Accuracy: 79.3%
+Tuesday: Random Forest, n_estimators=200, max_depth=15 → Accuracy: 80.1%
+Wednesday: Random Forest, n_estimators=150, max_depth=12 → Accuracy: ???
+```
+
+**Questions you can't answer**:
+
+- ❌ Which hyperparameters gave the best results?
+- ❌ What was the exact configuration of Monday's model?
+- ❌ How do I compare all experiments side-by-side?
+- ❌ Where did I save that good model from Tuesday?
+- ❌ What data version was used for each experiment?
+
+**Traditional "solutions" (all problematic)**:
+
+- Spreadsheet tracking (manual, error-prone)
+- Text file logging (unstructured, hard to analyze)
+- Print statements (lost after terminal closes)
+- Manual naming conventions (inconsistent, confusing)
+
+#### What is MLflow?
+
+**MLflow** is an open-source platform for managing the end-to-end machine learning lifecycle.
+
+**Created by**: Databricks (2018)  
+**Industry Adoption**: Microsoft, Toyota, Netflix, Walmart  
+**Why it's standard**: Works with any ML library (scikit-learn, TensorFlow, PyTorch)
+
+---
+
+### Part 8.1: Installing MLflow
+
+#### Step 1: Install MLflow
+
+```bash
+# Activate virtual environment
+source .venv/bin/activate
+
+# Install MLflow
+pip install mlflow
+
+# Verify installation
+mlflow --version
+```
+
+#### Step 2: Update requirements.txt
+
+```bash
+echo "mlflow==3.5.1" >> requirements.txt
+```
+
+Or manually add to `requirements.txt`:
+
+```txt
+mlflow==3.5.1
+```
+
+**Commit**:
+
+```bash
+git add requirements.txt
+git commit -m "chore: Add MLflow for experiment tracking"
+git push
+```
+
+---
+
+### Part 8.2: Understanding MLflow Tracking
+
+#### MLflow Hierarchy
+
+```text
+Experiment (e.g., "telecom-churn-prediction")
+├── Run 1 (Random Forest, 100 trees)
+│   ├── Parameters: n_estimators=100, max_depth=10
+│   ├── Metrics: accuracy=0.793, f1=0.585
+│   └── Artifacts: model.pkl, confusion_matrix.png
+├── Run 2 (Random Forest, 200 trees)
+│   ├── Parameters: n_estimators=200, max_depth=15
+│   ├── Metrics: accuracy=0.801, f1=0.603
+│   └── Artifacts: model.pkl, confusion_matrix.png
+```
+
+**Key Concepts**:
+
+- **Experiment**: Collection of related runs
+- **Run**: One execution of training code
+- **Parameters**: Input settings (hyperparameters)
+- **Metrics**: Output measurements (accuracy, loss)
+- **Artifacts**: Output files (models, plots)
+- **Tags**: Metadata for organization
+
+---
+
+### Part 8.3: Updating train.py with MLflow
+
+#### Step 1: Add MLflow Imports
+
+At the top of `src/train.py`:
+
+```python
+import mlflow
+import mlflow.sklearn
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score,
+    f1_score, roc_auc_score, confusion_matrix
+)
+```
+
+#### Step 2: Set MLflow Experiment
+
+In your `main()` function:
+
+```python
+def main():
+    # ... argument parsing ...
+    
+    # Set MLflow experiment
+    mlflow.set_experiment("telecom-churn-prediction")
+    
+    # ... rest of code ...
+```
+
+#### Step 3: Add MLflow Logging to Training Functions
+
+Update each training function to log parameters:
+
+```python
+def train_random_forest(X_train, y_train, tune_hyperparameters=False, **kwargs):
+    """Train Random Forest with MLflow logging."""
+    
+    if tune_hyperparameters:
+        param_grid = {...}
+        mlflow.log_param("param_grid", str(param_grid))  # Log grid
+        
+        # ... GridSearchCV code ...
+        
+        # Log best parameters
+        for param, value in grid_search.best_params_.items():
+            mlflow.log_param(f"best_{param}", value)
+        mlflow.log_metric("cv_best_score", grid_search.best_score_)
+    else:
+        # Log default parameters
+        params = {'n_estimators': 100, 'max_depth': None}
+        for key, value in params.items():
+            mlflow.log_param(key, value)
+    
+    # ... rest of training ...
+```
+
+#### Step 4: Wrap Training in MLflow Run
+
+In your `main()` function, wrap training:
+
+```python
+def main():
+    # ... setup code ...
+    
+    if args.model == 'all':
+        # Train each model in its own MLflow run
+        for model_name in ['random_forest', 'gradient_boosting', ...]:
+            with mlflow.start_run(run_name=f"{model_name}_{timestamp}"):
+                # Log tags
+                mlflow.set_tag("model_type", model_name)
+                mlflow.set_tag("tuning", "enabled" if args.tune else "disabled")
+                
+                # Log parameters
+                mlflow.log_param("model_type", model_name)
+                mlflow.log_param("tune_hyperparameters", args.tune)
+                
+                # Train model
+                model = train_model(...)
+                
+                # Evaluate and log metrics
+                metrics = evaluate_model(model, X_test, y_test)
+                for metric_name, value in metrics.items():
+                    mlflow.log_metric(metric_name, value)
+                
+                # Log model
+                mlflow.sklearn.log_model(model, "model")
+                
+                # Log local file as artifact
+                mlflow.log_artifact(model_path, "local_models")
+```
+
+#### Step 5: Add Evaluation Function
+
+```python
+def evaluate_model(model, X_test, y_test):
+    """Evaluate model and return metrics."""
+    yhat = model.predict(X_test)
+    
+    metrics = {
+        'accuracy': accuracy_score(y_test, yhat),
+        'precision': precision_score(y_test, yhat, average='binary', pos_label='Yes'),
+        'recall': recall_score(y_test, yhat, average='binary', pos_label='Yes'),
+        'f1_score': f1_score(y_test, yhat, average='binary', pos_label='Yes')
+    }
+    
+    # ROC-AUC if model supports predict_proba
+    if hasattr(model, 'predict_proba'):
+        y_proba = model.predict_proba(X_test)[:, 1]
+        metrics['roc_auc'] = roc_auc_score(y_test == 'Yes', y_proba)
+    
+    return metrics
+```
+
+---
+
+### Part 8.4: Running Training with MLflow
+
+#### Train a Single Model
+
+```bash
+python -m src.train \
+    --data data/processed/preprocessed_data.npy \
+    --model random_forest
+
+# Output shows MLflow run ID:
+# MLflow run ID: abc123def456...
+```
+
+#### Train with Hyperparameter Tuning
+
+```bash
+python -m src.train \
+    --data data/processed/preprocessed_data.npy \
+    --model random_forest \
+    --tune
+```
+
+#### Train All Models
+
+```bash
+python -m src.train \
+    --data data/processed/preprocessed_data.npy \
+    --model all
+```
+
+---
+
+### Part 8.5: Accessing MLflow UI in CodeSpaces
+
+#### CRITICAL: Port Forwarding Required
+
+**Why**: CodeSpaces is a remote virtual machine. When you run `mlflow ui`, it starts on that remote machine's localhost, not your computer.
+
+#### Step 1: Start MLflow UI
+
+```bash
+# Must use 0.0.0.0 to allow external connections
+mlflow ui --host 0.0.0.0 --port 5000
+```
+
+**Expected output**:
+
+```output
+[2024-10-27 10:30:00] [INFO] Listening at: http://0.0.0.0:5000
+```
+
+**Leave this terminal running!** Open a new terminal for other commands.
+
+#### Step 2: Forward Port in CodeSpaces
+
+**In VS Code**:
+
+1. **Look at bottom panel** - Click **PORTS** tab
+   - Should see: `PROBLEMS | OUTPUT | DEBUG CONSOLE | TERMINAL | PORTS`
+
+2. **Port 5000 should appear automatically**
+   - If not, click **"Forward a Port"** button (or **+** icon)
+   - Enter: `5000`
+   - Press Enter
+
+3. **Open in Browser**:
+   - Right-click on port 5000 row
+   - Select **"Open in Browser"**
+
+   OR
+
+   - Hover over "Forwarded Address" column
+   - Click globe icon 🌐
+
+   OR
+
+   - Copy the URL (like `https://username-repo-abc123-5000.app.github.dev`)
+   - Paste into new browser tab
+
+#### Step 3: Verify MLflow UI
+
+You should see:
+
+- Experiments list (left sidebar)
+- "telecom-churn-prediction" experiment
+- Runs table with your training runs
+- Metrics columns (accuracy, f1_score, etc.)
+
+**Troubleshooting**:
+
+- "Can't reach this page" → Check mlflow ui still running
+- Blank page → Try incognito/private window
+- Port not listed → Manually forward port 5000
+- Still not working → See troubleshooting section below
+
+---
+
+### Part 8.6: Comparing Experiments
+
+#### Step 1: Train Multiple Models
+
+```bash
+python -m src.train --data data.npy --model random_forest
+python -m src.train --data data.npy --model random_forest --tune
+python -m src.train --data data.npy --model gradient_boosting
+python -m src.train --data data.npy --model logistic_regression
+```
+
+#### Step 2: Select Runs
+
+In MLflow UI:
+
+1. Check boxes next to 2-4 runs
+2. Click **"Compare"** button
+
+#### Step 3: View Comparison
+
+**Comparison page shows**:
+
+- **Parallel Coordinates Plot**: Visual comparison
+- **Scatter Plot**: Parameter vs. metric correlation
+- **Parameters Table**: Side-by-side parameter comparison
+- **Metrics Table**: Side-by-side metric comparison
+
+**To find best model**:
+
+1. Sort metrics table by "accuracy" (click column header)
+2. Note the best run ID
+3. Check other metrics (F1, ROC-AUC)
+4. Consider training time
+
+---
+
+### Part 8.7: Loading Models from MLflow
+
+#### Method 1: Load by Run ID
+
+```python
+import mlflow.sklearn
+
+# Get run ID from MLflow UI
+run_id = "abc123def456..."
+
+# Load model
+model = mlflow.sklearn.load_model(f"runs:/{run_id}/model")
+
+# Use model
+predictions = model.predict(X_test)
+```
+
+#### Method 2: Load Best Model
+
+```python
+import mlflow
+
+# Search for best run
+mlflow.set_experiment("telecom-churn-prediction")
+runs = mlflow.search_runs(
+    order_by=["metrics.accuracy DESC"],
+    max_results=1
+)
+
+# Load best model
+best_run_id = runs.iloc[0]['run_id']
+model = mlflow.sklearn.load_model(f"runs:/{best_run_id}/model")
+
+print(f"Loaded model from run: {best_run_id}")
+print(f"Accuracy: {runs.iloc[0]['metrics.accuracy']}")
+```
+
+---
+
+### Part 8.8: MLflow Best Practices
+
+#### What to Log
+
+**Always log**:
+
+- ✅ Model type and version
+- ✅ All hyperparameters (including defaults)
+- ✅ Performance metrics (accuracy, precision, recall, F1)
+- ✅ Training time
+- ✅ Random seed
+
+**Consider logging**:
+
+- Cross-validation scores
+- Confusion matrix values
+- Feature importance
+- Data version (DVC hash)
+
+#### Naming Conventions
+
+**Experiments**:
+
+```text
+✅ "telecom-churn-prediction"
+✅ "customer-churn-v2"
+❌ "experiment1"
+❌ "test"
+```
+
+**Run names**:
+
+```text
+✅ "random_forest_20241027_103045"
+✅ "rf_tuned_final"
+❌ "run1"
+❌ "final_final_v2"
+```
+
+#### Organization Tips
+
+```python
+# Use tags for filtering
+mlflow.set_tag("model_type", "random_forest")
+mlflow.set_tag("data_version", "v1.0")
+mlflow.set_tag("tuning", "enabled")
+mlflow.set_tag("environment", "development")
+```
+
+---
+
+### Part 8.9: Troubleshooting
+
+#### Problem: MLflow UI Not Accessible
+
+**Symptoms**: "Can't reach this page", connection refused
+
+**Solutions**:
+
+```bash
+# 1. Check MLflow is running
+# Terminal should show "Listening at: http://0.0.0.0:5000"
+
+# 2. Restart with correct host
+mlflow ui --host 0.0.0.0 --port 5000
+
+# 3. In PORTS tab:
+# - Verify port 5000 is listed
+# - Right-click → "Port Visibility" → "Public"
+# - Click "Open in Browser"
+```
+
+#### Problem: Runs Not Showing
+
+**Solutions**:
+
+1. Refresh browser (F5)
+2. Check experiment name matches
+3. Verify mlruns/ directory exists: `ls mlruns/`
+
+#### Problem: Large mlruns/ Directory
+
+**Solution**:
+
+```bash
+# Delete old experiments
+mlflow experiments delete --experiment-id 1
+
+# Or delete via UI (select runs → delete)
+```
+
+---
+
+### Part 8.10: Update .gitignore
+
+Add to `.gitignore`:
+
+```gitignore
+# MLflow
+mlruns/
+mlflow-artifacts/
+mlartifacts/
+mlflow.db*
+.mlflow/
+```
+
+**Commit**:
+
+```bash
+git add .gitignore
+git commit -m "chore: Update .gitignore for MLflow"
+```
+
+---
+
+### Summary
+
+You've completed MLflow integration! You can now:
+
+✅ Track experiments automatically  
+✅ Compare models visually  
+✅ Load best models by metric  
+✅ Access MLflow UI in CodeSpaces  
+✅ Reproduce results reliably  
+
+#### Next Steps
+
+**View your experiments**:
+
+```bash
+mlflow ui --host 0.0.0.0 --port 5000
+# PORTS tab → Forward 5000 → Open in Browser
+```
+
+**Train and compare**:
+
+```bash
+python -m src.train --data data.npy --model all --tune
+# Then compare in MLflow UI
+```
 
 ---
 
