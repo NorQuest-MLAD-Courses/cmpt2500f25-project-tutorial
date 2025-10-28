@@ -1923,11 +1923,12 @@ Your data is now tracked by DVC locally, but to collaborate or backup, you need 
 2. Click **"Sign Up"** or **"Sign in with GitHub"** (recommended - uses your GitHub account)
 3. Verify your email if prompted
 
-#### Step 2: Install DagsHub Package
+#### Step 2: Install DagsHub and DVC-S3 Package
 
 ```bash
 # Install DagsHub CLI and authentication tools
 pip install dagshub --upgrade
+pip install dvc-s3
 ```
 
 #### Step 3: Authenticate with DagsHub
