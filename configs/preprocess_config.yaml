@@ -1,0 +1,59 @@
+# configs/preprocess_config.yaml
+
+# Data configuration
+data:
+  input_file: data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
+  output_dir: data/processed
+  target_column: Churn
+  id_column: customerID
+
+# Missing value handling
+missing_values:
+  strategy: drop  # Options: drop, mean, median, mode, forward_fill, backward_fill
+  threshold: 0.5  # Drop columns with >50% missing values
+
+# Feature scaling
+scaling:
+  method: standard  # Options: standard, minmax, robust, none
+  with_mean: true
+  with_std: true
+
+# Feature columns
+features:
+  categorical:
+    - gender
+    - Partner
+    - Dependents
+    - PhoneService
+    - MultipleLines
+    - InternetService
+    - OnlineSecurity
+    - OnlineBackup
+    - DeviceProtection
+    - TechSupport
+    - StreamingTV
+    - StreamingMovies
+    - Contract
+    - PaperlessBilling
+    - PaymentMethod
+  
+  numerical:
+    - SeniorCitizen
+    - tenure
+    - MonthlyCharges
+    - TotalCharges
+
+# Train-test split
+split:
+  test_size: 0.2
+  random_state: 42
+  stratify: true  # Stratify by target
+
+# Pipeline options
+pipeline:
+  use_sklearn_pipeline: true  # Recommended: true
+  save_artifacts: true  # Save pipeline and encoders
+  output_files:
+    data: preprocessed_data.npy
+    pipeline: preprocessing_pipeline.pkl
+    label_encoder: label_encoder.pkl

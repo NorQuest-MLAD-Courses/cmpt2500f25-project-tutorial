@@ -3124,178 +3124,31 @@ TypeError: __init__() missing required positional argument
 
 ### What to Submit
 
-1. **GitHub Repository URL**
-   - Your GitHub Classroom repository
-   - Should contain all required files
-   - Latest changes pushed
-   - Repository should be public or accessible to instructors
+Submit a zip file containing the following items based on your work converting your previous ML experiment:
 
-2. **Brief Project Summary** (in README.md)
-   - What ML problem did you solve?
-   - What models did you implement?
-   - What were your key findings?
-   - Any unique aspects of your implementation?
+1. **Project Structure**:
+    - A well-organized folder structure including `data/`, `models/`, `notebooks/`, `src/`, `configs/` (optional), `docs/`.
 
-### Grading Criteria
+2. **Modular Code**:
+    - Python scripts (`.py` files) in the `src/` directory (e.g., `preprocess.py`, `train.py`, `evaluate.py`, `predict.py`).
+    - Demonstrate modular design and OOP principles where applicable.
+    - Include `src/predict.py` with a `ModelPredictor` class (or similar structure) for making predictions independently.
 
-Your lab will be evaluated on:
+3. **Configuration Files** (Optional but Recommended):
+    - YAML or JSON configuration files in the `configs/` folder if used.
 
-1. **Project Structure (20%)**
-   - Proper directory organization
-   - All required folders present
-   - Logical file placement
-   - Clean and organized
+4. **Documentation**:
+    - A comprehensive `README.md` file in the project root describing the project, how to set it up, and how to run the main workflow (preprocessing, training, evaluation, prediction).
+    - Docstrings within the Python code (for modules, classes, and functions).
 
-2. **Code Quality (30%)**
-   - Type hints and docstrings
-   - Proper error handling
-   - Logging instead of prints
-   - Following best practices (SRP, DRY, etc.)
-   - Code is readable and maintainable
+5. **Notebook Organization**:
+    - All relevant Jupyter notebooks (including your original experiment notebook) placed within the `notebooks/` folder with clear naming conventions.
 
-3. **Object-Oriented Design (15%)**
-   - At least one substantial class implemented
-   - ModelPredictor class for predictions
-   - Proper use of encapsulation
-   - Methods are cohesive and well-designed
+6. **Dependency File**:
+    - A `requirements.txt` file listing all necessary Python packages with their versions.
 
-4. **Modularity and Reusability (15%)**
-   - Functions are single-purpose
-   - Code is reusable
-   - Proper separation of concerns
-   - Configuration management
-
-5. **Documentation (15%)**
-   - Comprehensive README
-   - All functions documented
-   - Clear usage examples
-   - Installation instructions
-   - Module-level docstrings
-
-6. **Functionality (10%)**
-   - example_usage.py runs successfully
-   - All modules work as intended
-   - Can load data, train, evaluate, predict
-   - No critical bugs
-
-7. **Git Usage (5%)**
-   - Meaningful commit messages
-   - Proper .gitignore
-   - Clean repository
-   - Regular commits showing progress
-
-### Bonus Points (Up to +10%)
-
-- Comprehensive YAML configuration with examples
-- Multiple well-designed classes beyond requirements
-- Extensive example usage script with edge cases
-- Well-organized notebook series (numbered, focused)
-- Command-line argument parsing
-- Additional utility functions
-- Cross-validation implementation
-- Particularly clean and elegant code
-- Going above and beyond requirements
-
-### Due Date
-
-**[To be announced by instructor]**
-
-**Late Policy**: [To be specified by instructor]
-
----
-
-## Part 19: Final Checklist
-
-Before you submit, go through this complete checklist:
-
-### Structure
-
-- [ ] All required directories created and organized
-- [ ] .gitkeep files in empty directories
-- [ ] Logical organization of all files
-- [ ] No unnecessary files or artifacts
-
-### Code Files
-
-- [ ] src/**init**.py exists
-- [ ] src/utils/**init**.py exists
-- [ ] src/utils/config.py implemented
-- [ ] src/preprocess.py implemented with all key functions
-- [ ] src/train.py implemented with training functions
-- [ ] src/predict.py implemented with ModelPredictor class
-- [ ] src/evaluate.py implemented with evaluation functions
-- [ ] src/feature_engineering.py (if applicable)
-
-### Code Quality
-
-- [ ] All functions have type hints
-- [ ] All functions have Google-style docstrings
-- [ ] Using logging, not print statements
-- [ ] Proper error handling throughout
-- [ ] No hard-coded values (configuration centralized)
-- [ ] DRY principle followed
-- [ ] Single responsibility per function
-- [ ] Code is readable and well-formatted
-
-### Object-Oriented Programming
-
-- [ ] At least one substantial class implemented
-- [ ] ModelPredictor class works independently
-- [ ] Classes have proper **init** methods
-- [ ] Methods are well-designed and cohesive
-- [ ] Proper use of encapsulation
-
-### Functionality
-
-- [ ] Can load and preprocess data end-to-end
-- [ ] Can train all models
-- [ ] Can evaluate and compare models
-- [ ] Can make predictions on new data
-- [ ] Can save and load models
-- [ ] ModelPredictor works standalone
-- [ ] example_usage.py runs without errors
-
-### Documentation
-
-- [ ] README.md is comprehensive
-- [ ] Installation instructions clear
-- [ ] Usage examples provided
-- [ ] Project structure explained
-- [ ] Model performance documented
-- [ ] All modules have docstrings
-- [ ] Key design decisions documented
-
-### Notebooks
-
-- [ ] All notebooks in notebooks/ folder
-- [ ] Descriptive names (preferably numbered)
-- [ ] Each notebook has clear purpose
-- [ ] Original notebook preserved
-- [ ] Notebooks run without errors
-
-### Configuration
-
-- [ ] requirements.txt complete with versions
-- [ ] Makefile present with at least setup target
-- [ ] Config values centralized
-- [ ] Optional: YAML configs provided
-
-### Git
-
-- [ ] All required files committed
-- [ ] Meaningful commit messages
-- [ ] .gitignore properly configured
-- [ ] No unnecessary files committed
-- [ ] Latest changes pushed to GitHub
-- [ ] Repository accessible
-
-### Testing
-
-- [ ] Ran example_usage.py successfully
-- [ ] Tested import statements
-- [ ] Checked for syntax errors
-- [ ] Verified file structure
-- [ ] Tested on fresh clone (if possible)
+7. **Makefile**:
+    - A `Makefile` including at least a target for setting up the Python virtual environment (e.g., `make setup`).
 
 ---
 
@@ -3343,9 +3196,6 @@ Each lab builds on this foundation. The structure you've created will support al
 ---
 
 ### Happy Coding! 🚀
-
-*Lab prepared for CMPT 2500 - ML/AI Deployment*  
-*NorQuest College*  
 
 ---
 
@@ -3487,3 +3337,7 @@ class EnsemblePredictor:
 ```
 
 ---
+
+*Lab 1 Instructions*  
+*CMPT 2500: Machine Learning Deployment and Software Development*  
+*NorQuest College*

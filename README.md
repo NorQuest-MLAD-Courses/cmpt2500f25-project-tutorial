@@ -1,6 +1,6 @@
-# Telecom Customer Churn Prediction
+# CMPT 2500 Project: Telecom Customer Churn Prediction
 
-A machine learning project to predict customer churn in the telecommunications industry. This project uses various classification algorithms to identify customers at risk of leaving the service.
+Am organized machine learning project demonstrating a machine learning project to predict customer churn in the telecommunications industry. This project uses various classification algorithms to identify customers at risk of leaving the service.
 
 ## Project Overview
 
@@ -8,11 +8,14 @@ Customer churn prediction helps telecom companies identify customers who are lik
 
 ## Project Structure
 
-```
-telecom-churn-prediction/
+```output
+cmpt2500f25-project-tutorial/
 ├── data/
 │   ├── raw/                    # Original, immutable data
 │   └── processed/              # Cleaned, processed data
+├── configs/
+│   ├── preprocess_config.yaml # Configuration for preprocessing
+│   └── train_config.yaml      # Configuration for training
 ├── src/
 │   ├── __init__.py
 │   ├── preprocess.py          # Data loading & preprocessing
@@ -28,14 +31,16 @@ telecom-churn-prediction/
 │   └── proof_of_concept.ipynb
 ├── outputs/                    # Plots, reports, results
 ├── tests/                      # Unit tests
-├── requirements.txt           # Python dependencies
 ├── .gitignore
+├── Makefile
+├── requirements.txt           # Python dependencies
 └── README.md
 ```
 
 ## Features
 
 The dataset includes the following features:
+
 - **Demographics**: Gender, Senior Citizen status, Partner, Dependents
 - **Services**: Phone Service, Multiple Lines, Internet Service, Online Security, Online Backup, Device Protection, Tech Support, Streaming TV, Streaming Movies
 - **Account Information**: Tenure, Contract type, Payment method, Paperless billing, Monthly charges, Total charges
@@ -53,18 +58,20 @@ The dataset includes the following features:
 ## Installation
 
 1. Clone the repository:
+
 ```bash
-git clone <repository-url>
-cd telecom-churn-prediction
+git clone https://github.com/NorQuest-MLAD-Courses/cmpt2500f25-project-tutorial.git
+cd cmpt2500f25-project-tutorial
 ```
 
-2. Create a virtual environment (recommended):
+2. You can use the Makefile to set up the project. Running `make` will automatically create and activate the `.venv` virtual environment for you:
+
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+make
 ```
 
 3. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -123,6 +130,7 @@ print(comparison_df)
 ## Model Performance
 
 The Voting Classifier (ensemble) typically achieves the best performance:
+
 - **Accuracy**: ~80%
 - **Precision**: ~65-70%
 - **Recall**: ~55-60%
@@ -133,6 +141,7 @@ The Voting Classifier (ensemble) typically achieves the best performance:
 ## Key Insights
 
 Based on the analysis:
+
 1. **Contract Type**: Month-to-month contracts have higher churn rates
 2. **Tenure**: Customers with shorter tenure are more likely to churn
 3. **Internet Service**: Fiber optic customers show different churn patterns
@@ -153,15 +162,11 @@ Based on the analysis:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
-
-This project is licensed under the MIT License.
-
 ## Contact
 
 For questions or feedback, please open an issue on GitHub.
 
 ## Acknowledgments
 
-- Dataset source: [Telecom Customer Churn Dataset]
+- Dataset source: [Telecom Customer Churn Dataset](https://www.kaggle.com/datasets/yeanzc/telco-customer-churn-ibm-dataset)
 - This project is part of an ML deployment learning series
