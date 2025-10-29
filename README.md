@@ -106,6 +106,7 @@ telecom-churn-prediction/
 │   └── test_predict.py
 ├── .gitignore                  # Git ignore (includes mlruns/, .dvc/cache/)
 ├── .dvcignore                  # DVC ignore patterns
+├── Makefile                    # Makefile for automation
 ├── requirements.txt            # Python dependencies
 └── README.md                   # This file
 ```
