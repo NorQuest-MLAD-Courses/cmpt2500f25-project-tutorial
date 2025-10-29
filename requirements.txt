@@ -39,3 +39,7 @@ nbformat==5.10.4
 # Data Version Control - DagsHub Remote (Recommended)
 dagshub==0.6.3
 dvc-s3==3.2.2
+
+# API
+flask==3.0.3
+flasgger==0.9.7.1
