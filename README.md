@@ -404,17 +404,19 @@ Key fixtures available in `conftest.py`:
 ### Writing New Tests
 
 1. Create test file: `tests/test_your_module.py`
+
 2. Import the module: `from src.your_module import your_function`
+
 3. Write test function starting with `test_`:
 
-```python
-def test_your_function(sample_data):
-    """Test your_function with sample data."""
-    result = your_function(sample_data)
-    
-    assert result is not None
-    assert len(result) > 0
-```
+    ```python
+    def test_your_function(sample_data):
+        """Test your_function with sample data."""
+        result = your_function(sample_data)
+        
+        assert result is not None
+        assert len(result) > 0
+    ```
 
 4. Run your test: `pytest tests/test_your_module.py`
 
@@ -686,12 +688,6 @@ mlflow experiments delete --experiment-id 1
 
 ---
 
-## License
-
-This project is licensed under the MIT License - see LICENSE file for details.
-
----
-
 ## Acknowledgments
 
 - **Dataset**: [Telco Customer Churn](https://www.kaggle.com/blastchar/telco-customer-churn) from Kaggle
@@ -703,13 +699,13 @@ This project is licensed under the MIT License - see LICENSE file for details.
 
 ## Contact
 
-**Instructor**: [Your Name]  
-**Course**: CMPT 2500 - ML/AI Deployment  
+**Instructor**: Mohammad M. Ajallooeian  
+**Course**: CMPT 2500 - Machine Learning Deployment and Software Development
 **Institution**: NorQuest College
 
 ---
 
-**Version**: 2.2.0 (Lab 02 Complete - DVC + MLflow)  
+**Version**: 2.3.0
 **Last Updated**: October 2024  
 **Python**: 3.12.12  
 **DVC**: 3.63.0  

@@ -481,3 +481,488 @@ If they do not exist, you must get them (e.g., from your `mlruns` artifacts) and
     You should get a large JSON response back that includes the `message`, `endpoints`, and `required_input_format` keys.
 
 ---
+
+---
+
+## Task 3: Implement Core Prediction Endpoints
+
+So far, our API can be pinged for its health (`/health`) and can serve its own documentation (`/cmpt2500f25_tutorial_home`). These are crucial supporting endpoints, but now we must implement the core functionality that makes our project a true MLOps service: **making predictions**.
+
+The entire purpose of this API is to expose our trained models to the world. We need to create "endpoints" that can:
+
+1. **Receive** new customer data from a user.
+2. **Process** that data using our saved preprocessing pipeline.
+3. **Predict** churn using our `model_v1.pkl` and `model_v2.pkl` models.
+4. **Return** the prediction to the user.
+
+We will create two separate endpoints, `/v1/predict` and `/v2/predict`, to allow a user to choose which model version they want to use.
+
+### 3.1: HTTP Requests
+
+#### What is a `POST` Request?
+
+Until now, we've only used `GET` requests (like when you type `curl http://...` or visit a URL in your browser). `GET` is for *retrieving* data.
+
+To *send* data **to** the server (like a form or a JSON object), we must use a `POST` request. Our predict endpoints will be `POST` endpoints because the user needs to *send us* their customer data for prediction.
+
+#### Why Validate Data?
+
+What if a user sends us bad data? Maybe they forget a field, or they send a string (`"ten"`) where we expect a number (`10`). If we feed this "garbage" data to our model, it will crash the entire API.
+
+This is the "Garbage In, Garbage Out" (GIGO) principle. We *must* validate all incoming data to ensure it's complete and in the correct format **before** we let our model see it. We will create a helper function to do exactly that.
+
+#### Why Handle Single vs. Batch Predictions?
+
+Imagine a user has 1,000 customers to predict. It would be incredibly slow for them to send 1,000 separate API requests. A well-designed API allows the user to send a *list* of customers (a "batch") in a *single* request. Our API will be smart enough to handle both a single customer object and a list of customer objects.
+
+### 3.2: Practice
+
+#### 3.2.1: Define Required Features
+
+First, let's open `src/app.py`. We need to define *exactly* what data our API expects. We can get this from our preprocessing pipeline.
+
+Add these two lists to the top of `src/app.py`, right after your `joblib.load()` section.
+
+```python
+# Define the expected features and their types
+# Based on our preprocessing pipeline
+REQUIRED_FEATURES = [
+    "gender", "Partner", "Dependents", "PhoneService", "PaperlessBilling",
+    "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup", 
+    "DeviceProtection", "TechSupport", "StreamingTV", "StreamingMovies", 
+    "Contract", "PaymentMethod", "tenure", "MonthlyCharges", "TotalCharges",
+    "SeniorCitizen" # <-- Make sure this is added
+]
+
+NUMERICAL_FEATURES = ["tenure", "MonthlyCharges", "TotalCharges"]
+CATEGORICAL_FEATURES = [f for f in REQUIRED_FEATURES if f not in NUMERICAL_FEATURES]
+```
+
+#### 3.2.2: Create the Validation Helper Function
+
+Now, let's create the function that validates incoming data. This function will check every item in a request.
+
+Add this function to `src/app.py` (e.g., after your `/cmpt2500f25_tutorial_home` endpoint).
+
+```python
+def validate_input(data):
+    """
+    Validates the input data to ensure it has all required features
+    and correct data types.
+    """
+    # Check for missing features
+    missing_features = [f for f in REQUIRED_FEATURES if f not in data]
+    if missing_features:
+        return f"Missing required features: {', '.join(missing_features)}", 400
+
+    # Check data types
+    for feature in NUMERICAL_FEATURES:
+        if not isinstance(data[feature], (int, float)):
+            # Special case for TotalCharges which might be None/null on input
+            if feature == 'TotalCharges' and data[feature] is None:
+                continue
+            return f"Invalid type for {feature}: expected int or float, got {type(data[feature]).__name__}", 400
+            
+    for feature in CATEGORICAL_FEATURES:
+        if not isinstance(data[feature], str):
+            return f"Invalid type for {feature}: expected str, got {type(data[feature]).__name__}", 400
+
+    return None, 200 # No error
+```
+
+#### 3.2.3: Implement the `/v1/predict` Endpoint
+
+This is the main event. This code is complex, so let's break it down:
+
+1. It defines the endpoint with `@app.route('/v1/predict', methods=['POST'])`.
+2. It includes a `"""docstring"""` for Flasgger to find.
+3. It gets the JSON data from the `POST` request.
+4. It smartly checks if the data is a single dictionary (`dict`) or a list of dictionaries (`list`).
+5. It loops through every item and uses our `validate_input` function.
+6. If validation passes, it converts the data to a `pandas.DataFrame`.
+7. It uses our `pipeline` to preprocess the data.
+8. It uses `model_v1` to make predictions and get probabilities.
+9. It uses our `label_encoder` to turn the prediction (0 or 1) back into "No" or "Yes".
+10. It formats the output as a clean JSON response.
+
+Add this new endpoint to `src/app.py`.
+
+```python
+@app.route('/v1/predict', methods=['POST'])
+def predict_v1():
+    """
+    Make a prediction using Model v1 (Best Model)
+    ---
+    tags:
+      - Prediction Endpoints
+    consumes:
+      - application/json
+    produces:
+      - application/json
+    parameters:
+      - in: body
+        name: body
+        description: >
+            Customer data for churn prediction.
+            Can be a single JSON object or a list of JSON objects.
+        required: true
+        schema:
+          type: "object"
+          properties:
+            tenure:
+              type: "integer"
+              example: 12
+            MonthlyCharges:
+              type: "number"
+              example: 59.95
+            TotalCharges:
+              type: "number"
+              example: 720.50
+            Contract:
+              type: "string"
+              example: "One year"
+            PaymentMethod:
+              type: "string"
+              example: "Electronic check"
+            OnlineSecurity:
+              type: "string"
+              example: "No"
+            TechSupport:
+              type: "string"
+              example: "No"
+            InternetService:
+              type: "string"
+              example: "DSL"
+            gender:
+              type: "string"
+              example: "Female"
+            SeniorCitizen:
+              type: "string"
+              example: "No"
+            Partner:
+              type: "string"
+              example: "Yes"
+            Dependents:
+              type: "string"
+              example: "No"
+            PhoneService:
+              type: "string"
+              example: "Yes"
+            MultipleLines:
+              type: "string"
+              example: "No"
+            PaperlessBilling:
+              type: "string"
+              example: "Yes"
+            OnlineBackup:
+              type: "string"
+              example: "Yes"
+            DeviceProtection:
+              type: "string"
+              example: "No"
+            StreamingTV:
+              type: "string"
+              example: "No"
+            StreamingMovies:
+              type: "string"
+              example: "No"
+    responses:
+      200:
+        description: Prediction successful
+        schema:
+          type: "object"
+          properties:
+            prediction:
+              type: "string"
+              example: "No"
+            probability:
+              type: "number"
+              example: 0.85
+            model_version:
+              type: "string"
+              example: "v1"
+      400:
+        description: Invalid input data
+        schema:
+          type: "object"
+          properties:
+            error:
+              type: "string"
+              example: "Missing required features: tenure"
+      500:
+        description: Internal server error
+        schema:
+          type: "object"
+          properties:
+            error:
+              type: "string"
+              example: "Models or pipelines are not loaded. Check server logs."
+    """
+    json_data = request.get_json()
+    if not json_data:
+        return jsonify({"error": "No input data provided"}), 400
+
+    # Check if the loaded objects are valid
+    if not all([pipeline, label_encoder, model_v1, model_v2]):
+         return jsonify({"error": "Models or pipelines are not loaded. Check server logs."}), 500
+
+    is_batch = isinstance(json_data, list)
+    data_list = json_data if is_batch else [json_data]
+
+    # Validate all items before processing
+    for item in data_list:
+        # Handle potential None for TotalCharges before validation
+        if 'TotalCharges' not in item or item['TotalCharges'] is None:
+            item['TotalCharges'] = 0.0 # Impute with 0, pipeline will handle
+            
+        error_msg, status_code = validate_input(item)
+        if error_msg:
+            return jsonify({"error": error_msg}), status_code
+
+    # If validation passes for all, proceed with prediction
+    try:
+        # Convert to DataFrame
+        input_df = pd.DataFrame(data_list)
+        
+        # Reorder columns to match pipeline's training order
+        input_df = input_df[REQUIRED_FEATURES]
+
+        # Preprocess the data
+        processed_input = pipeline.transform(input_df)
+
+        # Make prediction
+        prediction_numeric = model_v1.predict(processed_input)
+        prediction_proba = model_v1.predict_proba(processed_input)
+
+        # Decode prediction
+        prediction_label = label_encoder.inverse_transform(prediction_numeric)
+        
+        # Format output
+        results = []
+        for i in range(len(prediction_label)):
+            # Get the probability of the *predicted* class
+            probability = prediction_proba[i][prediction_numeric[i]]
+            results.append({
+                "prediction": prediction_label[i],
+                "probability": float(probability),
+                "model_version": "v1"
+            })
+        
+        # Return single object if input was single, else return list
+        return jsonify(results[0] if not is_batch else results)
+
+    except Exception as e:
+        # Catch-all for other errors (e.g., preprocessing issues)
+        return jsonify({"error": f"An error occurred during prediction: {str(e)}"}), 500
+```
+
+#### 3.2.4: Implement the `/v2/predict` Endpoint
+
+This is much easier. We just copy the entire `predict_v1` function, make a few small changes, and we're done.
+
+1. Copy the *entire* `@app.route('/v1/predict')` function (from `@app.route` to the very end) and paste it right below.
+2. Change the route to `@app.route('/v2/predict', methods=['POST'])`.
+3. Change the function name to `def predict_v2():`.
+4. Change the docstring description to "Make a prediction using Model v2 (2nd Best Model)".
+5. In the prediction section, change `model_v1` to `model_v2`:
+    - `prediction_numeric = model_v2.predict(processed_input)`
+    - `prediction_proba = model_v2.predict_proba(processed_input)`
+6. In the final JSON output, change the `model_version` to `"v2"`.
+
+---
+
+### 3.3: A Note on Debugging: `SeniorCitizen`
+
+As you were building this, you may have run into an error like `columns are missing: {'SeniorCitizen'}` or `could not convert string to float: 'No'`.
+
+This is a classic MLOps integration bug! It happens when the assumptions in our API code don't match the assumptions baked into our saved `preprocessing_pipeline.pkl` file.
+
+1. **The Mismatch:** Our `src/preprocess.py` script maps `SeniorCitizen` from a number (`0` or `1`) to a string (`"No"` or `"Yes"`). It then correctly lists `SeniorCitizen` as a **categorical feature** in `src/utils/config.py`.
+2. **The Stale Pipeline:** If you got this error, it's because your `preprocessing_pipeline.pkl` was **stale**. It was generated *before* `src/utils/config.py` was fixed, and it was incorrectly treating `SeniorCitizen` as a **numerical feature**.
+3. **The Fix (The MLOps Way):** The correct solution, which we've applied, is to:
+    - Fix the `src/utils/config.py` file to move `SeniorCitizen` from `NUMERICAL_FEATURES` to `CATEGORICAL_FEATURES`.
+    - Re-run the preprocessing script to generate a new, correct pipeline:
+
+        ```sh
+        python -m src.preprocess --input data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv --output-dir data/processed
+        ```
+
+    - Ensure our `app.py` code sends `SeniorCitizen` as a string (e.g., `"No"`), which it now does.
+
+This debugging process is a core part of MLOps. Your artifacts (the `.pkl` file) and your live code (the `app.py` file) *must* be in sync.
+
+---
+
+### 3.4: Test Your Endpoints Manually
+
+With your API running, it's time to test every endpoint. Open a **second terminal** (leave your server running in the first one) and run these `curl` commands.
+
+#### 1. Test the Health Check
+
+This verifies your server is running.
+
+```sh
+curl http://127.0.0.1:5000/health
+```
+
+**Expected Output:**
+
+```output
+{"status":"ok"}
+```
+
+#### 2. Test the Home Endpoint
+
+This verifies your documentation endpoint is working. (Use your project name for the endpoint).
+
+```sh
+curl http://127.0.0.1:5000/cmpt2500f25_tutorial_home
+```
+
+**Expected Output:** A large JSON object with your API's documentation.
+
+---
+
+#### 3. Test Single Prediction (v1)
+
+This is the most important test. We send one valid JSON object to `/v1/predict`.
+
+```sh
+curl -X POST http://127.0.0.1:5000/v1/predict \
+-H "Content-Type: application/json" \
+-d '{
+    "tenure": 12,
+    "MonthlyCharges": 59.95,
+    "TotalCharges": 720.50,
+    "Contract": "One year",
+    "PaymentMethod": "Electronic check",
+    "OnlineSecurity": "No",
+    "TechSupport": "No",
+    "InternetService": "DSL",
+    "gender": "Female",
+    "SeniorCitizen": "No",
+    "Partner": "Yes",
+    "Dependents": "No",
+    "PhoneService": "Yes",
+    "MultipleLines": "No",
+    "PaperlessBilling": "Yes",
+    "OnlineBackup": "Yes",
+    "DeviceProtection": "No",
+    "StreamingTV": "No",
+    "StreamingMovies": "No"
+}'
+```
+
+**Expected Output:** A single JSON prediction (probability will vary).
+
+```json
+{
+  "model_version": "v1",
+  "prediction": "No",
+  "probability": 0.943118991440788
+}
+```
+
+#### 4. Test Batch Prediction (v1)
+
+This tests our batch logic by sending a *list* of two customers.
+
+```sh
+curl -X POST http://127.0.0.1:5000/v1/predict \
+-H "Content-Type: application/json" \
+-d '[
+    {
+        "tenure": 12, "MonthlyCharges": 59.95, "TotalCharges": 720.50, "Contract": "One year",
+        "PaymentMethod": "Electronic check", "OnlineSecurity": "No", "TechSupport": "No",
+        "InternetService": "DSL", "gender": "Female", "SeniorCitizen": "No", "Partner": "Yes", "Dependents": "No",
+        "PhoneService": "Yes", "MultipleLines": "No", "PaperlessBilling": "Yes",
+        "OnlineBackup": "Yes", "DeviceProtection": "No", "StreamingTV": "No", "StreamingMovies": "No"
+    },
+    {
+        "tenure": 1, "MonthlyCharges": 70.70, "TotalCharges": 70.70, "Contract": "Month-to-month",
+        "PaymentMethod": "Electronic check", "OnlineSecurity": "No", "TechSupport": "No",
+        "InternetService": "Fiber optic", "gender": "Male", "SeniorCitizen": "Yes", "Partner": "No", "Dependents": "No",
+        "PhoneService": "Yes", "MultipleLines": "No", "PaperlessBilling": "Yes",
+        "OnlineBackup": "No", "DeviceProtection": "No", "StreamingTV": "No", "StreamingMovies": "No"
+    }
+]'
+```
+
+**Expected Output:** A JSON *list* with two predictions.
+
+```json
+[
+  {
+    "model_version": "v1",
+    "prediction": "No",
+    "probability": 0.943118991440788
+  },
+  {
+    "model_version": "v1",
+    "prediction": "Yes",
+    "probability": 0.5333149814467554
+  }
+]
+```
+
+#### 5. Test Invalid Data (v1)
+
+This tests our validator. We send a request missing required features.
+
+```sh
+curl -X POST http://127.0.0.1:5000/v1/predict \
+-H "Content-Type: application/json" \
+-d '{
+    "MonthlyCharges": 59.95,
+    "TotalCharges": 720.50,
+    "Contract": "One year"
+}'
+```
+
+**Expected Output:** A 400 Bad Request error.
+
+```output
+{
+  "error": "Missing required features: gender, Partner, Dependents, PhoneService, PaperlessBilling, MultipleLines, InternetService, OnlineSecurity, OnlineBackup, DeviceProtection, TechSupport, StreamingTV, StreamingMovies, PaymentMethod, tenure, SeniorCitizen"
+}
+```
+
+#### 6. Test Single Prediction (v2)
+
+Finally, we test our second model endpoint.
+
+```sh
+curl -X POST http://127.0.0.1:5000/v2/predict \
+-H "Content-Type: application/json" \
+-d '{
+    "tenure": 12,
+    "MonthlyCharges": 59.95,
+    "TotalCharges": 720.50,
+    "Contract": "One year",
+    "PaymentMethod": "Electronic check",
+    "OnlineSecurity": "No",
+    "TechSupport": "No",
+    "InternetService": "DSL",
+    "gender": "Female",
+    "SeniorCitizen": "No",
+    "Partner": "Yes",
+    "Dependents": "No",
+    "PhoneService": "Yes",
+    "MultipleLines": "No",
+    "PaperlessBilling": "Yes",
+    "OnlineBackup": "Yes",
+    "DeviceProtection": "No",
+    "StreamingTV": "No",
+    "StreamingMovies": "No"
+}'
+```
+
+**Expected Output:** A single JSON prediction, this time from `v2`.
+
+```json
+{
+  "model_version": "v2",
+  "prediction": "No",
+  "probability": 0.8804473876953125
+}
+```

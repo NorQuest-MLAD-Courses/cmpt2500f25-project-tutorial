@@ -1,47 +1,54 @@
 """
-Configuration file for the Telecom Churn Prediction project.
+This module contains constants used throughout the project.
 """
 
+# Standard library imports
 import os
 
-# Paths
-# Get the project root directory by going up three levels from the current file's location
-# os.path.abspath(__file__) returns the absolute path of the current file
-# Each os.path.dirname() removes one level from the path (goes up one directory)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# os.path.join() combines path components into a complete path using the OS-appropriate separator
-# Example: if BASE_DIR = "/project", this creates "/project/data/raw" (Mac/Linux) or "\project\data\raw" (Windows)
-DATA_RAW_PATH = os.path.join(BASE_DIR, "data", "raw")
-DATA_PROCESSED_PATH = os.path.join(BASE_DIR, "data", "processed")
-MODELS_PATH = os.path.join(BASE_DIR, "models")
-OUTPUTS_PATH = os.path.join(BASE_DIR, "outputs")
+# Project root directory
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-# Model parameters
-# RANDOM_STATE controls random number generation for reproducibility (same results every time)
-# The value 42 is arbitrary but conventionally used; any integer works
-RANDOM_STATE = 42
-TEST_SIZE = 0.2
+# --- 1. Data File Paths ---
+DATA_PATH = os.path.join(PROJECT_ROOT, 'data')
+DATA_RAW_PATH = os.path.join(DATA_PATH, 'raw', 'WA_Fn-UseC_-Telco-Customer-Churn.csv')
+DATA_PROCESSED_PATH = os.path.join(DATA_PATH, 'processed')
 
-DATA_FILENAME = "WA_Fn-UseC_-Telco-Customer-Churn.csv"
+# --- 2. Model & Artifact Paths ---
+MODELS_PATH = os.path.join(PROJECT_ROOT, 'models')
+PIPELINE_PATH = os.path.join(DATA_PROCESSED_PATH, 'preprocessing_pipeline.pkl')
+LABEL_ENCODER_PATH = os.path.join(DATA_PROCESSED_PATH, 'label_encoder.pkl')
 
-# Feature columns - YOU NEED TO UPDATE THESE based on your actual CSV columns!
-# Run this first to see your columns:
-# import pandas as pd
-# df = pd.read_csv("data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv")
-# print(df.columns.tolist())
-
-CATEGORICAL_FEATURES = [
-    'customerID', 'gender', 'Partner', 'Dependents', 
-    'PhoneService', 'MultipleLines', 'InternetService', 
-    'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 
-    'TechSupport', 'StreamingTV', 'StreamingMovies', 
-    'Contract', 'PaperlessBilling', 'PaymentMethod', 
-    'TotalCharges', 'Churn'
-]
-
-NUMERICAL_FEATURES = ['SeniorCitizen', 'tenure', 'MonthlyCharges']
-
+# --- 3. Feature Definitions ---
+DROP_COLUMNS = ['customerID']
 TARGET = 'Churn'
 
-# Columns to drop
-DROP_COLUMNS = ['customerID']
+# Define all features (excluding target and drop columns)
+ALL_FEATURES = [
+    'gender', 'SeniorCitizen', 'Partner', 'Dependents', 'tenure', 
+    'PhoneService', 'MultipleLines', 'InternetService', 'OnlineSecurity', 
+    'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV', 
+    'StreamingMovies', 'Contract', 'PaperlessBilling', 'PaymentMethod', 
+    'MonthlyCharges', 'TotalCharges'
+]
+
+# --- THE FIX IS HERE ---
+# SeniorCitizen was incorrectly in NUMERICAL_FEATURES. It is categorical ("No"/"Yes").
+
+CATEGORICAL_FEATURES = [
+    'gender', 'Partner', 'Dependents', 'PhoneService', 'MultipleLines', 
+    'InternetService', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 
+    'TechSupport', 'StreamingTV', 'StreamingMovies', 'Contract', 
+    'PaperlessBilling', 'PaymentMethod', 'SeniorCitizen' # <-- Moved here
+]
+
+NUMERICAL_FEATURES = [
+    'tenure', 'MonthlyCharges', 'TotalCharges' # <-- Removed from here
+]
+
+# --- 4. Model Training Parameters ---
+TEST_SIZE = 0.2
+RANDOM_STATE = 42
+
+# --- 5. MLflow Configuration ---
+MLFLOW_TRACKING_URI = 'mlruns'
+EXPERIMENT_NAME = 'Telecom Churn Prediction'
