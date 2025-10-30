@@ -1135,6 +1135,7 @@ def test_v2_predict_single(client):
     assert "probability" in response.json
     assert response.json["model_version"] == "v2" # Check for v2
 ```
+
 ---
 
 ### 4.3.5: Run Your Automated Tests
@@ -1149,7 +1150,7 @@ pytest
 
 You will see a lot of output, and that's okay! The most important part is at the top and the bottom.
 
-**Expected Output (What to look for):**
+**Expected Output (What to look for)**:
 
 You should see that all 7 of our new `test_api.py` tests **PASSED**. This is a success!
 
@@ -1172,9 +1173,163 @@ tests/test_api.py::test_v2_predict_single PASSED                         [  x%]
 No! This is an expected and very important part of MLOps.
 
 The 48 `FAILED` tests are coming from your *old* test files (like `tests/test_preprocess.py` and `tests/test_train.py`). They failed because the "bug" we fixed with `SeniorCitizen` changed the fundamental structure of our data:
-* **Old Data:** `SeniorCitizen` was one numerical column.
-* **New Data:** `SeniorCitizen` is now a categorical feature that gets one-hot-encoded into *two* columns (`SeniorCitizen_No`, `SeniorCitizen_Yes`).
+
+- **Old Data**: `SeniorCitizen` was one numerical column.
+- **New Data**: `SeniorCitizen` is now a categorical feature that gets one-hot-encoded into *two* columns (`SeniorCitizen_No`, `SeniorCitizen_Yes`).
 
 All the old tests were built on the assumption of the old data shape. Our fix in `src/utils/config.py` has correctly made them "stale" or "obsolete." In a real-world scenario, your next task would be to go back and update (or delete) those old tests to match the new, correct code.
 
 For this lab, you only need to confirm that your **7 `test_api.py` tests passed**.
+
+---
+
+## Task 5: Final API Documentation
+
+### 5.1: Motivate
+
+Our API is now fully functional and well-tested. The final step is to ensure it's **usable by other people**. Documentation is one of the most important parts of a production-ready API.
+
+We already have a `/home` endpoint, but that's only visible once the API is running. We need two types of documentation:
+
+1. **A Manual File (`API_Documentation.md`)**: A high-level "README" for our API. This file lives in our repository and is the *first thing* a new developer reads. It tells them what the API does, how to install its dependencies, and how to run it.
+2. **An Automatic, Interactive UI**: This is the "secret" we've been building all along. The `flasgger` library and all those `"""docstrings"""` we wrote weren't just for comments—they were building a beautiful, interactive documentation website *inside* our API. This is where a developer can see every endpoint, every parameter, and even send test requests.
+
+### 5.2: Practice (Part 1 - The Manual File)
+
+First, create a new file in the **root** of your project (at the same level as `src/` and `tests/`).
+
+**File**: `API_Documentation.md`
+
+Paste the following content into this new file. This serves as the "front door" for your project.
+
+````markdown
+# API Documentation: CMPT 2500 Tutorial Project - Telecom Churn Prediction
+
+## Overview
+
+This API serves a machine learning model to predict customer churn. It exposes endpoints to check API health, get usage information, and receive predictions from two different model versions (v1 and v2).
+
+This document provides instructions for setup and a high-level overview of the endpoints. For a detailed, interactive API reference, run the server and navigate to `/apidocs/`.
+
+---
+
+## Installation & Running
+
+### 1. Setup Environment
+
+Clone the repository and install the required Python packages.
+
+```sh
+git clone [https://github.com/](https://github.com/)[YOUR_USERNAME]/cmpt2500f25-project-tutorial.git
+cd cmpt2500f25-project-tutorial
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 2. Get Data & Artifacts
+
+This project uses DVC to manage large data files and pipelines. You must set up your DagsHub credentials and pull the data.
+
+(Follow the credential setup in `assignments/Lab 03 - REST API Development.md` if this is a new environment).
+
+```sh
+dvc pull data/processed
+```
+
+This will download `preprocessing_pipeline.pkl` and `label_encoder.pkl`.
+
+### 3. Run the API Server
+
+Ensure your `models/model_v1.pkl` and `models/model_v2.pkl` files are in place. Then, run the app:
+
+```sh
+python src/app.py
+```
+
+The server will start on `http://127.0.0.1:5000`.
+
+---
+
+## Endpoints
+
+`GET /health`
+
+- **Purpose**: A simple health check.
+- **Success Response (200 OK)**:
+
+```json
+{
+  "message": "Welcome to the CMPT 2500 F25 Project Tutorial API!",
+  "api_documentation": "Find the interactive documentation at /apidocs/",
+  ...
+}
+```
+
+`POST /v1/predict` (and `POST /v2/predict`)
+
+- **Purpose**: Generates a prediction from Model v1 (or v2). Accepts a single JSON object or a list of objects for batch prediction.
+- **Request Body (Example for one customer)**:
+
+```json
+{
+    "tenure": 12,
+    "MonthlyCharges": 59.95,
+    "TotalCharges": 720.50,
+    "Contract": "One year",
+    "PaymentMethod": "Electronic check",
+    "OnlineSecurity": "No",
+    "TechSupport": "No",
+    "InternetService": "DSL",
+    "gender": "Female",
+    "SeniorCitizen": "No",
+    "Partner": "Yes",
+    "Dependents": "No",
+    "PhoneService": "Yes",
+    "MultipleLines": "No",
+    "PaperlessBilling": "Yes",
+    "OnlineBackup": "Yes",
+    "DeviceProtection": "No",
+    "StreamingTV": "No",
+    "StreamingMovies": "No"
+}
+```
+
+- **Success Response (200 OK)**:
+
+```json
+{
+  "prediction": "No",
+  "probability": 0.9431,
+  "model_version": "v1"
+}
+```
+
+- **Error Response (400 Bad Request)**:
+
+```json
+{"error": "Missing required features: tenure, ..."}
+```
+
+`GET /apidocs/`
+
+- **Purpose**: Provides a full, interactive "Swagger UI" for the API. You can see all endpoints, data models, and test them live from your browser.
+
+````
+
+### 5.3: Practice (Part 2 - The Automatic Documentation)
+
+Now for the "reveal." The `flasgger` library and our detailed docstrings have already built a professional documentation website for us.
+
+1. **Run your API server** (if it's not already running):
+
+    ```sh
+    python src/app.py
+    ```
+
+2. **Open your browser** and go to this URL:
+    [http://127.0.0.1:5000/apidocs/](http://127.0.0.1:5000/apidocs/)
+
+You will see a complete "Swagger UI" page. You can click on any endpoint (like `/v1/predict`), click "Try it out," paste in your test JSON, and execute the request, all from the browser. This is the power of self-documenting APIs.
+
+Congratulations, you have now completed Lab 3!
