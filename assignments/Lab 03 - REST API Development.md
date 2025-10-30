@@ -777,9 +777,9 @@ As you were building this, you may have run into an error like `columns are miss
 
 This is a classic MLOps integration bug! It happens when the assumptions in our API code don't match the assumptions baked into our saved `preprocessing_pipeline.pkl` file.
 
-1. **The Mismatch:** Our `src/preprocess.py` script maps `SeniorCitizen` from a number (`0` or `1`) to a string (`"No"` or `"Yes"`). It then correctly lists `SeniorCitizen` as a **categorical feature** in `src/utils/config.py`.
-2. **The Stale Pipeline:** If you got this error, it's because your `preprocessing_pipeline.pkl` was **stale**. It was generated *before* `src/utils/config.py` was fixed, and it was incorrectly treating `SeniorCitizen` as a **numerical feature**.
-3. **The Fix (The MLOps Way):** The correct solution, which we've applied, is to:
+1. **The Mismatch**: Our `src/preprocess.py` script maps `SeniorCitizen` from a number (`0` or `1`) to a string (`"No"` or `"Yes"`). It then correctly lists `SeniorCitizen` as a **categorical feature** in `src/utils/config.py`.
+2. **The Stale Pipeline**: If you got this error, it's because your `preprocessing_pipeline.pkl` was **stale**. It was generated *before* `src/utils/config.py` was fixed, and it was incorrectly treating `SeniorCitizen` as a **numerical feature**.
+3. **The Fix (The MLOps Way)**: The correct solution, which we've applied, is to:
     - Fix the `src/utils/config.py` file to move `SeniorCitizen` from `NUMERICAL_FEATURES` to `CATEGORICAL_FEATURES`.
     - Re-run the preprocessing script to generate a new, correct pipeline:
 
@@ -805,7 +805,7 @@ This verifies your server is running.
 curl http://127.0.0.1:5000/health
 ```
 
-**Expected Output:**
+**Expected Output**:
 
 ```output
 {"status":"ok"}
@@ -819,7 +819,7 @@ This verifies your documentation endpoint is working. (Use your project name for
 curl http://127.0.0.1:5000/cmpt2500f25_tutorial_home
 ```
 
-**Expected Output:** A large JSON object with your API's documentation.
+**Expected Output**: A large JSON object with your API's documentation.
 
 ---
 
@@ -853,7 +853,7 @@ curl -X POST http://127.0.0.1:5000/v1/predict \
 }'
 ```
 
-**Expected Output:** A single JSON prediction (probability will vary).
+**Expected Output**: A single JSON prediction (probability will vary).
 
 ```json
 {
@@ -888,7 +888,7 @@ curl -X POST http://127.0.0.1:5000/v1/predict \
 ]'
 ```
 
-**Expected Output:** A JSON *list* with two predictions.
+**Expected Output**: A JSON *list* with two predictions.
 
 ```json
 [
@@ -919,7 +919,7 @@ curl -X POST http://127.0.0.1:5000/v1/predict \
 }'
 ```
 
-**Expected Output:** A 400 Bad Request error.
+**Expected Output**: A 400 Bad Request error.
 
 ```output
 {
@@ -957,7 +957,7 @@ curl -X POST http://127.0.0.1:5000/v2/predict \
 }'
 ```
 
-**Expected Output:** A single JSON prediction, this time from `v2`.
+**Expected Output**: A single JSON prediction, this time from `v2`.
 
 ```json
 {
@@ -966,3 +966,215 @@ curl -X POST http://127.0.0.1:5000/v2/predict \
   "probability": 0.8804473876953125
 }
 ```
+
+---
+
+## Task 4: Automate API Testing with `pytest`
+
+### 4.1: Motivate
+
+In the last task, we tested our API by manually running `curl` commands in the terminal. This worked, but it has major problems:
+
+- **It's Slow**: We had to manually copy, paste, and run 6 different commands.
+- **It's Repetitive**: We have to do this *every single time* we change the code.
+- **It's Error-Prone**: It's easy to forget a test or make a typo in a `curl` command.
+
+This is not a scalable or reliable way to test. The professional solution is to write **automated tests**. We will use `pytest` to write a test script that can run all 6 of our tests (and more!) in a single command. These tests will automatically check for the correct status codes and JSON responses, ensuring our API always works as expected.
+
+### 4.2: Explain
+
+#### What is `pytest`?
+
+We've used `pytest` before to test our Python functions. We can use the *exact same tool* to test our Flask API.
+
+#### What is a Test Client?
+
+How can `pytest` test a running server? The answer is: **it doesn't**.
+
+Flask provides a "test client" that lets us interact with our app in memory *without* needing to run a live server. The test client simulates `GET` and `POST` requests and gives us the response, all within a simple Python script.
+
+#### What is a `pytest` Fixture?
+
+To use this test client in all our tests, we need a setup function. In `pytest`, a setup function is called a **fixture**.
+
+We will create a fixture named `client`. This function will:
+
+1. Import our `app` from `src/app.py`.
+2. Create a test client from it.
+3. `yield` (provide) this client to any test function that asks for it.
+
+This way, we only have to write the setup code *once*.
+
+### 4.3: Practice
+
+#### 4.3.1: Create the Test File
+
+First, we need a new test file. Create the following file in your `tests/` directory:
+`tests/test_api.py`
+
+#### 4.3.2: Add Imports and the Test Client Fixture
+
+Add the following code to your new `tests/test_api.py` file. This imports `pytest`, imports our `app` from `src.app`, and creates our `client` fixture.
+
+```python
+import pytest
+import json
+from src.app import app as flask_app # Import our Flask app
+
+# This is the pytest fixture
+@pytest.fixture
+def client():
+    """Create a test client for the Flask app."""
+    # Set the app to testing mode
+    flask_app.config['TESTING'] = True
+    
+    # Create a test client using the Flask application context
+    with flask_app.test_client() as client:
+        yield client # Provide this client to the test functions
+```
+
+#### 4.3.3: Add Tests for Basic Endpoints
+
+Now, let's add tests for our simple `GET` endpoints. Notice how the test functions take `client` as an argument? `pytest` sees this and automatically gives it the fixture we just defined.
+
+```python
+def test_health_check(client):
+    """Test the /health endpoint."""
+    response = client.get('/health')
+    assert response.status_code == 200
+    assert response.json == {"status": "ok"}
+
+def test_home_endpoint(client):
+    """Test the /cmpt2500f25_tutorial_home endpoint."""
+    response = client.get('/cmpt2500f25_tutorial_home')
+    assert response.status_code == 200
+    assert "message" in response.json
+    assert "required_input_format" in response.json
+    assert "numerical_features" in response.json["required_input_format"]
+```
+
+#### 4.3.4: Add Tests for Prediction Endpoints
+
+This is the most important part. We will add tests for `/v1/predict` and `/v2/predict`.
+
+First, we'll create a "golden" valid payload as a variable, so we don't have to rewrite it.
+
+Then, we'll write tests that use `client.post()` to send this data as JSON. We will check the status code and the content of the response.
+
+```python
+# A valid customer payload for testing
+VALID_PAYLOAD = {
+    "tenure": 12,
+    "MonthlyCharges": 59.95,
+    "TotalCharges": 720.50,
+    "Contract": "One year",
+    "PaymentMethod": "Electronic check",
+    "OnlineSecurity": "No",
+    "TechSupport": "No",
+    "InternetService": "DSL",
+    "gender": "Female",
+    "SeniorCitizen": "No",
+    "Partner": "Yes",
+    "Dependents": "No",
+    "PhoneService": "Yes",
+    "MultipleLines": "No",
+    "PaperlessBilling": "Yes",
+    "OnlineBackup": "Yes",
+    "DeviceProtection": "No",
+    "StreamingTV": "No",
+    "StreamingMovies": "No"
+}
+
+def test_v1_predict_single(client):
+    """Test /v1/predict with a single valid record."""
+    response = client.post('/v1/predict', json=VALID_PAYLOAD)
+    
+    assert response.status_code == 200
+    assert "prediction" in response.json
+    assert "probability" in response.json
+    assert response.json["model_version"] == "v1"
+
+def test_v1_predict_batch(client):
+    """Test /v1/predict with a batch (list) of valid records."""
+    # Create a batch of two identical valid records
+    batch_payload = [VALID_PAYLOAD, VALID_PAYLOAD]
+    response = client.post('/v1/predict', json=batch_payload)
+    
+    assert response.status_code == 200
+    assert isinstance(response.json, list) # Check that the response is a list
+    assert len(response.json) == 2 # Check that we got two predictions back
+    assert response.json[0]["model_version"] == "v1"
+
+def test_v1_predict_invalid_missing(client):
+    """Test /v1/predict with missing features."""
+    invalid_payload = {"tenure": 10, "MonthlyCharges": 50.0} # Missing most features
+    response = client.post('/v1/predict', json=invalid_payload)
+    
+    assert response.status_code == 400 # Expect a Bad Request error
+    assert "error" in response.json
+    assert "Missing required features" in response.json["error"]
+
+def test_v1_predict_invalid_type(client):
+    """Test /v1/predict with an incorrect data type."""
+    # Copy the valid payload and break it
+    invalid_payload = VALID_PAYLOAD.copy()
+    invalid_payload["tenure"] = "twelve" # Send a string instead of an int
+    
+    response = client.post('/v1/predict', json=invalid_payload)
+    
+    assert response.status_code == 400 # Expect a Bad Request error
+    assert "error" in response.json
+    assert "Invalid type for tenure" in response.json["error"]
+
+def test_v2_predict_single(client):
+    """Test /v2/predict with a single valid record."""
+    response = client.post('/v2/predict', json=VALID_PAYLOAD)
+    
+    assert response.status_code == 200
+    assert "prediction" in response.json
+    assert "probability" in response.json
+    assert response.json["model_version"] == "v2" # Check for v2
+```
+---
+
+### 4.3.5: Run Your Automated Tests
+
+Now for the best part. You don't need to run your server, and you don't need to run `curl` commands. `pytest` will automatically discover all files in your `tests/` directory that start with `test_`, and it will run all functions that start with `test_`.
+
+In your terminal, simply run:
+
+```sh
+pytest
+```
+
+You will see a lot of output, and that's okay! The most important part is at the top and the bottom.
+
+**Expected Output (What to look for):**
+
+You should see that all 7 of our new `test_api.py` tests **PASSED**. This is a success!
+
+```output
+============================= test session starts ==============================
+...
+tests/test_api.py::test_health_check PASSED                              [  x%]
+tests/test_api.py::test_home_endpoint PASSED                             [  x%]
+tests/test_api.py::test_v1_predict_single PASSED                         [  x%]
+tests/test_api.py::test_v1_predict_batch PASSED                          [  x%]
+tests/test_api.py::test_v1_predict_invalid_missing PASSED                [  x%]
+tests/test_api.py::test_v1_predict_invalid_type PASSED                   [  x%]
+tests/test_api.py::test_v2_predict_single PASSED                         [  x%]
+...
+================== 7 passed, 48 failed ... in 1.23s ==================
+```
+
+**Wait, 48 Failed?! Did I do something wrong?**
+
+No! This is an expected and very important part of MLOps.
+
+The 48 `FAILED` tests are coming from your *old* test files (like `tests/test_preprocess.py` and `tests/test_train.py`). They failed because the "bug" we fixed with `SeniorCitizen` changed the fundamental structure of our data:
+* **Old Data:** `SeniorCitizen` was one numerical column.
+* **New Data:** `SeniorCitizen` is now a categorical feature that gets one-hot-encoded into *two* columns (`SeniorCitizen_No`, `SeniorCitizen_Yes`).
+
+All the old tests were built on the assumption of the old data shape. Our fix in `src/utils/config.py` has correctly made them "stale" or "obsolete." In a real-world scenario, your next task would be to go back and update (or delete) those old tests to match the new, correct code.
+
+For this lab, you only need to confirm that your **7 `test_api.py` tests passed**.
