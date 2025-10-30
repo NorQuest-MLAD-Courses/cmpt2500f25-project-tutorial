@@ -1,7 +1,12 @@
 """
 Model training module for telecom churn prediction.
 Contains functions to train various classification models with hyperparameter tuning.
-Now includes MLflow experiment tracking.
+Includes MLflow experiment tracking.
+
+CLI notes:
+- Local saving is **disabled by default**.
+- Use `--save` to write pickle files into `--output-dir` (default: MODELS_PATH).
+- You can also pass `--no-save` explicitly (default), but it is redundant.
 """
 
 # Standard library imports
@@ -445,9 +450,9 @@ def evaluate_model(model: Any, X_test: np.ndarray, y_test: np.ndarray) -> Dict[s
     # Calculate metrics
     metrics = {
         'accuracy': accuracy_score(y_test, y_pred),
-        'precision': precision_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0),
-        'recall': recall_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0),
-        'f1_score': f1_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0)
+        'precision': precision_score(y_test, y_pred, average='binary', pos_label=1, zero_division=0),
+        'recall': recall_score(y_test, y_pred, average='binary', pos_label=1, zero_division=0),
+        'f1_score': f1_score(y_test, y_pred, average='binary', pos_label=1, zero_division=0),
     }
     
     # Calculate ROC-AUC if model supports predict_proba
@@ -592,6 +597,21 @@ def main():
         help=f'Directory to save trained models (default: {MODELS_PATH})'
     )
     
+    save_group = parser.add_mutually_exclusive_group()
+    save_group.add_argument(
+        '--no-save',
+        action='store_true',
+        dest='no_save',
+        default=True,
+        help='Do not save trained models to local disk (default)'
+    )
+    save_group.add_argument(
+        '--save',
+        action='store_false',
+        dest='no_save',
+        help='Save trained models to local disk'
+    )
+    
     parser.add_argument(
         '--experiment-name',
         type=str,
@@ -621,7 +641,7 @@ def main():
         # Train all models, each in its own MLflow run
         models = {}
         saved_paths = {}
-        
+
         model_names = [
             'logistic_regression',
             'random_forest',
@@ -630,27 +650,27 @@ def main():
             'gradient_boosting',
             'voting_classifier'
         ]
-        
+
         for model_name in model_names:
             run_name = f"{model_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            
+
             with mlflow.start_run(run_name=run_name):
                 start_time = datetime.now()
-                
+
                 # Log tags
                 mlflow.set_tag("model_type", model_name)
                 mlflow.set_tag("tuning", "enabled" if args.tune else "disabled")
-                
+
                 # Log basic parameters
                 mlflow.log_param("model_type", model_name)
                 mlflow.log_param("tune_hyperparameters", args.tune)
                 mlflow.log_param("random_state", RANDOM_STATE)
-                
+
                 # Train model
                 logger.info(f"\n{'='*60}")
                 logger.info(f"Training {model_name}...")
                 logger.info(f"{'='*60}")
-                
+
                 model_trainers = {
                     'logistic_regression': train_logistic_regression,
                     'random_forest': train_random_forest,
@@ -659,36 +679,38 @@ def main():
                     'gradient_boosting': train_gradient_boosting,
                     'voting_classifier': train_voting_classifier
                 }
-                
+
                 trainer = model_trainers[model_name]
-                
+
                 if model_name == 'voting_classifier':
                     model = trainer(X_train, y_train)
                 else:
                     model = trainer(X_train, y_train, tune_hyperparameters=args.tune)
-                
+
                 # Evaluate model
                 metrics = evaluate_model(model, X_test, y_test)
-                
+
                 # Log metrics to MLflow
                 for metric_name, metric_value in metrics.items():
                     mlflow.log_metric(metric_name, metric_value)
-                
+
                 # Calculate training time
                 elapsed = datetime.now() - start_time
                 mlflow.log_metric("training_time_seconds", elapsed.total_seconds())
-                
-                # Save model locally
-                model_path = save_model(model, model_name, args.output_dir)
-                saved_paths[model_name] = model_path
+
+                # Optionally save model locally
+                model_path = None
+                if not args.no_save:
+                    model_path = save_model(model, model_name, args.output_dir)
+                    saved_paths[model_name] = model_path
                 models[model_name] = model
-                
-                # Log model to MLflow
+
+                # Log model to MLflow (kept independent of local saving)
                 mlflow.sklearn.log_model(model, "model")
-                
+
                 # Log local model file as artifact
                 mlflow.log_artifact(model_path, "local_models")
-                
+
                 # Print results
                 logger.info(f"\n{'='*60}")
                 logger.info(f"Results for {model_name}")
@@ -700,33 +722,40 @@ def main():
                 if 'roc_auc' in metrics:
                     logger.info(f"ROC-AUC:   {metrics['roc_auc']:.4f}")
                 logger.info(f"Training time: {elapsed.total_seconds():.2f}s")
-                logger.info(f"Model saved: {model_path}")
+                if model_path is not None:
+                    logger.info(f"Model saved: {model_path}")
+                else:
+                    logger.info("Model not saved to disk (default; use --save to enable)")
                 logger.info(f"MLflow run ID: {mlflow.active_run().info.run_id}")
                 logger.info(f"{'='*60}\n")
-        
+
         print("\n" + "="*60)
-        print("All models trained and saved:")
-        print("="*60)
-        for name, path in saved_paths.items():
-            print(f"  - {name}: {path}")
-        print("="*60)
-        
+        print("All models trained.")
+        if saved_paths:
+            print("="*60)
+            print("Saved model artifacts:")
+            for name, path in saved_paths.items():
+                print(f"  - {name}: {path}")
+            print("="*60)
+        else:
+            print("(No local model files were saved; pass --save to enable local saving.)")
+
     else:
         # Train single model
         run_name = f"{args.model}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
         with mlflow.start_run(run_name=run_name):
             start_time = datetime.now()
-            
+
             # Log tags
             mlflow.set_tag("model_type", args.model)
             mlflow.set_tag("tuning", "enabled" if args.tune else "disabled")
-            
+
             # Log basic parameters
             mlflow.log_param("model_type", args.model)
             mlflow.log_param("tune_hyperparameters", args.tune)
             mlflow.log_param("random_state", RANDOM_STATE)
-            
+
             # Train model
             model_trainers = {
                 'logistic_regression': train_logistic_regression,
@@ -736,36 +765,42 @@ def main():
                 'gradient_boosting': train_gradient_boosting,
                 'voting_classifier': train_voting_classifier
             }
-            
+
             trainer = model_trainers[args.model]
-            
+
             if args.model == 'voting_classifier':
                 model = trainer(X_train, y_train)
             else:
                 model = trainer(X_train, y_train, tune_hyperparameters=args.tune)
-            
+
             # Evaluate model
             metrics = evaluate_model(model, X_test, y_test)
-            
+
             # Log metrics to MLflow
             for metric_name, metric_value in metrics.items():
                 mlflow.log_metric(metric_name, metric_value)
-            
+
             # Calculate training time
             elapsed = datetime.now() - start_time
             mlflow.log_metric("training_time_seconds", elapsed.total_seconds())
-            
-            # Save model locally
-            model_path = save_model(model, args.model, args.output_dir)
-            
+
+            # Optionally save model locally
+            model_path = None
+            if not args.no_save:
+                model_path = save_model(model, args.model, args.output_dir)
+
             # Log model to MLflow
             mlflow.sklearn.log_model(model, "model")
-            
-            # Log local model file as artifact
-            mlflow.log_artifact(model_path, "local_models")
-            
+
+            # If saved locally, also log the file as an artifact
+            if model_path is not None:
+                mlflow.log_artifact(model_path, "local_models")
+
             # Print results
-            print(f"\nTrained and saved {args.model}: {model_path}")
+            if model_path is not None:
+                print(f"\nTrained and saved {args.model}: {model_path}")
+            else:
+                print(f"\nTrained {args.model} (local saving disabled by default; use --save to enable)")
             print(f"\nMetrics:")
             print(f"  Accuracy:  {metrics['accuracy']:.4f}")
             print(f"  Precision: {metrics['precision']:.4f}")

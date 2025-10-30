@@ -59,7 +59,7 @@ You: "But it works for me! 🤔"
 **Why does this happen?**
 
 - Different Python versions (3.10 vs 3.12)
-- Different package versions (numpy 1.24 vs 2.3)
+- Different package versions (NumPy 1.24 vs 2.3)
 - Missing dependencies
 - Different operating systems
 
@@ -1931,35 +1931,9 @@ pip install dagshub --upgrade
 pip install dvc-s3
 ```
 
-#### Step 3: Authenticate with DagsHub
+#### Step 3: Create DagsHub Repository
 
-```bash
-# Login to DagsHub (creates authentication token)
-dagshub login
-```
-
-**This will**:
-
-1. Open a browser window (or provide a URL to open)
-2. Ask you to authorize DagsHub CLI
-3. Prompt you to select token expiration time
-
-**Important Notes**:
-
-- ⚠️ **Token Expiration**: Choose a timeframe that covers your course duration (e.g., 3 months for a semester course). The token will expire after this period.
-- ⚠️ **New CodeSpaces Instances**: If you create a new CodeSpaces environment, you'll need to run `dagshub login` again to re-authenticate.
-- ✅ **Token Storage**: The authentication token is stored locally in `~/.dagshub/config` (not in your project, not in Git).
-
-**Expected output**:
-
-```output
-DagsHub login successful!
-Authentication token saved to ~/.dagshub/config
-```
-
-#### Step 4: Create DagsHub Repository
-
-1. Click **"+ New Repository"** (top right)
+1. Click **"+ New Repository"** (top right) in your profile page.
 2. Fill in details:
    - **Repository name**: Match your GitHub repo name
    - **Description**: "Describe your problem"
@@ -1975,12 +1949,12 @@ You'll see an empty repository page with setup instructions.
 https://dagshub.com/ajallooe/cmpt2500f25-project-tutorial
 ```
 
-#### Step 5: Get DagsHub Credentials
+#### Step 4: Get DagsHub Credentials
 
-On your DagsHub repository page:
+On your DagsHub repository page, on the **Get started with Data** section towards the bottom of the page:
 
-1. Look for **"Connection credentials"** box (usually bottom right)
-2. Click **"Simple Data Upload"** tab
+1. Look for **Simple data upload** tab under **Configure your data storage**.
+2. - On the bottom right hand, you will see **Connection credentials** box.
 3. You'll see:
    - **Bucket name**: Your repository name
    - **Endpoint URL**: `https://dagshub.com/api/v1/repo-buckets/s3/your-username`
@@ -1990,7 +1964,9 @@ On your DagsHub repository page:
 
 **Keep this page open - you'll need these credentials!**
 
-#### Step 6: Configure DVC Remote
+- **Alternatively**, you may see a blue **"Remote"** button on your DagsHub repository page. Click it and a window will pop up. You will see your **Access Key ID** and **Secret Access Key** which you can copy.
+
+#### Step 5: Configure DVC Remote
 
 Back in your terminal:
 
@@ -2012,7 +1988,7 @@ dvc remote modify origin endpointurl https://dagshub.com/ajallooe/cmpt2500f25-pr
 dvc remote default origin
 ```
 
-#### Step 7: Add Credentials (Stored Locally Only)
+#### Step 6: Add Credentials
 
 ```bash
 # Add credentials (replace YOUR_TOKEN with actual token from DagsHub)
@@ -2020,9 +1996,12 @@ dvc remote modify origin --local access_key_id YOUR_TOKEN
 dvc remote modify origin --local secret_access_key YOUR_TOKEN
 ```
 
-**Important**: The `--local` flag stores credentials in `.dvc/config.local`, which is automatically ignored by Git. Your credentials stay secure on your machine only!
+**Important**:
 
-#### Step 8: Verify Configuration
+- ⚠️ **New CodeSpaces Instances**: If you create a new CodeSpaces environment, you'll need to re-authenticate.
+- ✅ **Token Storage**: The `--local` flag saves these secrets into a file called `.dvc/config.local`. This file is *already* in your `.gitignore`, which means your private keys are **never** committed to Git or pushed to GitHub.
+
+#### Step 7: Verify Configuration
 
 ```bash
 # Check main config (will be committed to Git)
@@ -2063,7 +2042,7 @@ dvc remote list
 origin  s3://dvc    (default)
 ```
 
-#### Step 9: Commit Remote Configuration
+#### Step 8: Commit Remote Configuration
 
 ```bash
 # Add config to Git (NOT config.local - that's gitignored)
@@ -2077,7 +2056,7 @@ git commit -m "chore: Configure DagsHub as DVC remote storage
 git push
 ```
 
-#### Step 10: Push Data to DagsHub
+#### Step 9: Push Data to DagsHub
 
 ```bash
 # Push data to remote storage
@@ -2099,7 +2078,7 @@ This uploads:
 
 **First push might take a minute depending on your internet speed.**
 
-#### Step 11: Verify Upload
+#### Step 10: Verify Upload
 
 ```bash
 # Check DVC status
@@ -2818,6 +2797,41 @@ mlflow ui --host 0.0.0.0 --port 5000
 ```
 
 **Leave this terminal running!** Open a new terminal for other commands.
+
+- **Problem**: `Address already in use` or `Port 5000 is in use`.
+  - **Solution**: This is the most common problem in web development. It means another program is already "listening" on port 5000.
+  - **Likely Causes**:
+        1.  An old, "zombie" version of your app/MLFlow that didn't stop properly.
+        2.  On **macOS**, the "AirPlay Receiver" system service (as you saw).
+        3.  On **Windows**, other system services like "Shared PnP-X IP Bus".
+
+  - **How to Fix**: You have two options: (A) Stop the conflicting program, or (B) run your app on a different port.
+
+  - **Fix A: Stop the Conflicting Program (Recommended)**
+        You must find the Process ID (PID) of the program using the port and "kill" it.
+
+    - **On macOS or Linux**:
+            1.  Find the PID: `lsof -i :5000`
+            2.  Look at the `COMMAND` and `PID` columns. If it's a `Python` process or `mlflow`, you can stop it.
+            3.  Stop the process: `kill -9 [PID_NUMBER]` (e.g., `kill -9 12345`)
+            4.  **macOS Specific**: If the command is `ControlCe` (Control Center), **do not** kill it. Instead, go to **System Preferences** -> **General** -> **AirDrop & Handoff** and turn **off** "AirPlay Receiver".
+
+    - **On Windows (in Command Prompt or PowerShell)**:
+            1.  Find the PID: `netstat -aon | findstr ":5000"`
+            2.  Look at the last column; this is the PID.
+            3.  Stop the process: `taskkill /F /PID [PID_NUMBER]` (e.g., `taskkill /F /PID 12345`)
+
+  - **Fix B: Run Your App on a Different Port**
+        The code in `src/app.py` is set up to use the `PORT` environment variable. You can just tell it to use a different port, like 5001.
+
+    - **On macOS or Linux**:
+            `PORT=5001 python src/app.py`
+
+    - **On Windows (in PowerShell)**:
+            `$env:PORT=5001; python src/app.py`
+
+    - If you do this, remember to test with the new port!
+            `curl http://127.0.0.1:5001/health`
 
 #### Step 2: Forward Port in CodeSpaces
 
@@ -4010,7 +4024,7 @@ start htmlcov/index.html  # Windows
 
 ```output
 ----------- coverage: platform linux, python 3.12.12-final-0 -----------
-Name                       Stmts   Miss  Cover
+Name                       Stats   Miss  Cover
 ----------------------------------------------
 src/__init__.py                1      0   100%
 src/evaluate.py              150     15    90%
@@ -4401,13 +4415,13 @@ For this lab assignment, you must **submit a single zip file** containing the re
     - **DVC Push Confirmation**: A screenshot of your terminal after successfully running `dvc push`. The output should clearly indicate that your data files were pushed or are already up-to-date with the remote.
         - *How to get this:* After making sure your DVC remote is configured and you have tracked your data (`dvc add data/raw data/processed`), run `dvc push` in your terminal. Capture the output that typically looks like `Pushing...`, `X files pushed`, or confirms files are `Alreadyincache/Up-to-date`.
 
-**Submission Summary:**
+**Submission Summary**:
 
 - **On Moodle**: Submit **one zip file** containing the three required screenshots (MLflow multiple runs, MLflow single run details, DVC push confirmation).
 - **On GitHub**: Ensure your latest code, including DVC (`.dvc`, `.gitignore`) and MLflow integration, is **committed and pushed** to your GitHub Classroom repository.
 - **On DagsHub/Google Drive**: Ensure your DVC remote is **shared with/accessible to** the instructor (`ajallooe` for DagsHub).
 
-**Note:** Grading is based on the successful implementation of CLI, DVC, MLflow, and testing as reflected in your GitHub repository, the confirmation of DVC remote setup and push, and the evidence provided in the MLflow screenshots.
+**Note**: Grading is based on the successful implementation of CLI, DVC, MLflow, and testing as reflected in your GitHub repository, the confirmation of DVC remote setup and push, and the evidence provided in the MLflow screenshots.
 
 ---
 
