@@ -709,7 +709,8 @@ def main():
                 mlflow.sklearn.log_model(model, "model")
 
                 # Log local model file as artifact
-                mlflow.log_artifact(model_path, "local_models")
+                if model_path is not None:
+                    mlflow.log_artifact(model_path, "local_models")
 
                 # Print results
                 logger.info(f"\n{'='*60}")

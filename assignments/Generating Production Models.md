@@ -17,11 +17,11 @@ In Lab 02, you learned how to use MLflow to track experiments. We will now run m
 These lines in `src/train.py` (lines 448–450):
 
 ```python
-        ...
-        'precision': precision_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0),
-        'recall': recall_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0),
-        'f1_score': f1_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0)
-        ...
+...
+'precision': precision_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0),
+'recall': recall_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0),
+'f1_score': f1_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0)
+...
 ```
 
 These are inconsistent with out data processing and specifically out use of `LabelEncoder` as that turns the label into numerical values, i.e., `0` and `1` here.
@@ -29,11 +29,11 @@ These are inconsistent with out data processing and specifically out use of `Lab
 We have to instead do:
 
 ```python
-        ...
-        'precision': precision_score(y_test, y_pred, average='binary', pos_label=1, zero_division=0),
-        'recall': recall_score(y_test, y_pred, average='binary', pos_label=1, zero_division=0),
-        'f1_score': f1_score(y_test, y_pred, average='binary', pos_label=1, zero_division=0),
-        ...
+...
+'precision': precision_score(y_test, y_pred, average='binary', pos_label=1, zero_division=0),
+'recall': recall_score(y_test, y_pred, average='binary', pos_label=1, zero_division=0),
+'f1_score': f1_score(y_test, y_pred, average='binary', pos_label=1, zero_division=0),
+...
 ```
 
 ### Unnecessary Step
@@ -41,56 +41,69 @@ We have to instead do:
 The `src/train.py` saves models it produces which is now unnecessary since we use MLFlow to track experiments and the artifacts they produce. So we add:
 
 ```python
-    save_group = parser.add_mutually_exclusive_group()
-    save_group.add_argument(
-        '--no-save',
-        action='store_true',
-        dest='no_save',
-        default=True,
-        help='Do not save trained models to local disk (default)'
-    )
-    save_group.add_argument(
-        '--save',
-        action='store_false',
-        dest='no_save',
-        help='Save trained models to local disk'
-    )
+save_group = parser.add_mutually_exclusive_group()
+save_group.add_argument(
+    '--no-save',
+    action='store_true',
+    dest='no_save',
+    default=True,
+    help='Do not save trained models to local disk (default)'
+)
+save_group.add_argument(
+    '--save',
+    action='store_false',
+    dest='no_save',
+    help='Save trained models to local disk'
+)
 ```
 
 We also change the unconditional behavior:
 
 ```python
-                model_path = save_model(model, model_name, args.output_dir)
-                saved_paths[model_name] = model_path
-                models[model_name] = model
+model_path = save_model(model, model_name, args.output_dir)
+saved_paths[model_name] = model_path
+models[model_name] = model
 ```
 
 to match with our added command-line argument:
 
 ```python
-                model_path = None
-                if not args.no_save:
-                    model_path = save_model(model, model_name, args.output_dir)
-                    saved_paths[model_name] = model_path
-                models[model_name] = model
+model_path = None
+if not args.no_save:
+    model_path = save_model(model, model_name, args.output_dir)
+    saved_paths[model_name] = model_path
+models[model_name] = model
 ```
 
 and also make this:
 
 ```python
-                logger.info(f"Model saved: {model_path}")
+logger.info(f"Model saved: {model_path}")
 ```
 
 conditional:
 
 ```python
-                if model_path is not None:
-                    logger.info(f"Model saved: {model_path}")
-                else:
-                    logger.info("Model not saved to disk (default; use --save to enable)")
+if model_path is not None:
+    logger.info(f"Model saved: {model_path}")
+else:
+    logger.info("Model not saved to disk (default; use --save to enable)")
 ```
 
-and other code and documentation the handle this.
+and
+
+```python
+mlflow.log_artifact(model_path, "local_models")
+```
+
+to:
+
+```python
+if model_path is not None:
+    mlflow.log_artifact(model_path, "local_models")
+```
+
+We should also update other parts of code and documentation to handle this.
 
 Note that we set the default behavior should be set to **not save** models locally, unless explicitly asked for.
 
