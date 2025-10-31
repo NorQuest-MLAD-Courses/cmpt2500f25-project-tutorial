@@ -4009,7 +4009,7 @@ start htmlcov/index.html  # Windows
 
 ```output
 ----------- coverage: platform linux, python 3.12.12-final-0 -----------
-Name                       Stmts   Miss  Cover
+Name                       Stats   Miss  Cover
 ----------------------------------------------
 src/__init__.py                1      0   100%
 src/evaluate.py              150     15    90%

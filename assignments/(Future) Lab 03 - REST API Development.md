@@ -1336,39 +1336,119 @@ You will see a complete "Swagger UI" page. You can click on any endpoint (like `
 
 ## Part 6: Submission
 
-**Collaboration & Commits**:
-
-This is a group assignment, so you should see evidence of multiple contributors in the commit history. Encourage your group members branch for each feature, then merge back into the main branch with clear commit messages.
-
-Example commits:
-
-- `git commit -m "feat(api): Add /v1/predict endpoint"`
-- `git commit -m "fix(app): Fix validation logic for SeniorCitizen"`
-- `git commit -m "test(api): Add pytest for /v1/predict"`
-
-**Final GitHub repository must reflect**:
-
 ### What to Submit
 
-1. `src/app.py` module:
-    - Must run via `python src/app.py`
-    - Exposes all the required endpoints
+1. **GitHub Repository URL**
+    - Your GitHub Classroom repository.
+    - Should contain all required files, including the new `src/app.py`, `tests/test_api.py`, `API_Documentation.md`, and the updated `src/utils/config.py` and `src/train.py`.
+    - Latest changes pushed (including the updated `data/processed.dvc` file).
 
-2. Two Predict Endpoints:
-    - `/v1/predict` (loading `model_v1.pkl`)
-    - `/v2/predict` (loading `model_v2.pkl`)
+2. **DVC Remote Storage URL**
+    - A shareable link to your DVC remote (e.g., the DagsHub repo or Google Drive folder) showing your DVC-managed data.
 
-3. Health Endpoint:
-    - `/health` returns information if the API is alive
+3. **API & Testing Screenshots**
+    - In your `API_Documentation.md` or as separate image files, include at least two screenshots:
+        - **`pytest` Results**: A screenshot of your terminal showing the `pytest` output where the 7 `tests/test_api.py` tests **PASS** (and the 48 old tests fail).
+        - **Swagger UI**: A screenshot of your browser open to the `http://127.0.0.1:5000/apidocs/` page, showing the interactive UI.
 
-4. Home Endpoint:
-    - `<your_project_name>_home` describing how the API works and the valid request payload.
+4. **Updated README.md / New Documentation**
+    - Your repository must contain the new `API_Documentation.md` file with instructions on how to set up, run, and use the API.
+    - Your `README.md` should be updated to mention the new API functionality and link to the `API_Documentation.md`.
 
-5. Documentation:
-    - `API_Documentation.md` must clearly outline how to install dependencies, run the Flask app, and make requests.
-    - `src/app.py` must contain Flasgger docstrings for all endpoints.
+### Grading Criteria
 
-**Note**: Grading is based on the successful implementation of the Flask API, the automated tests, and all documentation as reflected in your GitHub repository, the confirmation of your new DVC pipeline push, and the evidence provided in the screenshots.
+Your lab will be evaluated on:
+
+1. **Flask API Implementation (30%)**
+    - `src/app.py` is created, functional, and runs without errors.
+    - `flask` and `flasgger` are added to `requirements.txt`.
+    - Models (`.pkl`) and pipelines (`.pkl`) are loaded correctly at startup.
+    - `/health`, `/cmpt2500f25_tutorial_home`, `/v1/predict`, and `/v2/predict` endpoints are all implemented.
+
+2. **Validation & Error Handling (20%)**
+    - A `validate_input` function (or similar) exists and checks for all 19 required features.
+    - Correct data types (e.g., `str`, `int`, `float`) are enforced.
+    - API returns a `400 Bad Request` with a clear JSON error message for invalid or missing data.
+    - API correctly handles both single JSON objects and lists of objects (batch prediction).
+
+3. **API Testing (20%)**
+    - `tests/test_api.py` file created.
+    - `pytest` fixture (`client`) is used to test the Flask app.
+    - Meaningful tests cover the `/health` and `/home` endpoints.
+    - Tests cover `/v1/predict` and `/v2/predict` for single, batch, and invalid data scenarios.
+    - All 7 new API tests pass.
+
+4. **Documentation (15%)**
+    - `src/app.py` contains detailed Flasgger docstrings for all 4 endpoints, including parameters and responses.
+    - The `/apidocs/` Swagger UI is functional and auto-generated.
+    - A new `API_Documentation.md` file exists and provides clear, high-level instructions for setup, running, and endpoint usage.
+
+5. **Bug Fixes & DVC (15%)**
+    - The `SeniorCitizen` bug is fixed in `src/utils/config.py`.
+    - The `NameError` and `NoneType` bugs are fixed in `src/train.py`.
+    - The `data/processed/preprocessing_pipeline.pkl` has been correctly regenerated.
+    - The *new* pipeline and encoder have been pushed to DVC (`dvc push data/processed`).
+
+### Bonus Points (Up to +10%)
+
+- Advanced error handling (e.g., specific error codes for different validation failures).
+- Fixing the 48 stale tests in `tests/test_preprocess.py`, `tests/test_train.py`, etc., to work with the new data shape and refactored code.
+- Implementing the "Robust Model Loading" from Phase 2 (downloading models from a URL if not found locally).
+- Setting up a basic GitHub Action to automatically run `pytest` (even if some tests fail).
+
+### Due Date
+
+**[To be announced by instructor]**
+
+**Late Policy**: [To be specified by instructor]
+
+---
+
+## Part 7: Final Checklist
+
+Before you submit, go through this complete checklist:
+
+### API Code (`src/app.py`)
+
+- [ ] `flask` and `flasgger` added to `requirements.txt`.
+- [ ] `src/app.py` created and imports `Flask`, `flasgger`, `joblib`, `pandas`.
+- [ ] Models and pipelines are loaded into memory at startup.
+- [ ] `GET /health` endpoint is implemented.
+- [ ] `GET /cmpt2500f25_tutorial_home` endpoint is implemented and shows example JSON.
+- [ ] `POST /v1/predict` and `POST /v2/predict` endpoints are implemented.
+- [ ] `REQUIRED_FEATURES` list includes all 19 features (including `SeniorCitizen`).
+- [ ] `validate_input` function checks for all 19 features and their correct types (`SeniorCitizen` as `str`).
+- [ ] Prediction endpoints correctly handle both single `dict` and batch `list` inputs.
+- [ ] All 4 endpoints have detailed Flasgger docstrings.
+
+### Bug Fixes & Artifacts
+
+- [ ] `src/utils/config.py` is updated (moves `SeniorCitizen` to `CATEGORICAL_FEATURES`).
+- [ ] `src/train.py` is updated (fixes `Tuple` import and `mlflow.log_artifact(None)` bug).
+- [ ] `python -m src.preprocess ... --output-dir data/processed` was re-run *after* fixing `config.py`.
+- [ ] `dvc push data/processed` was run to upload the new, correct pipeline.
+
+### Testing (`tests/test_api.py`)
+
+- [ ] `tests/test_api.py` file created.
+- [ ] `client` fixture is defined in the file.
+- [ ] Test functions exist for `/health` and `/home`.
+- [ ] Test functions exist for `/v1/predict` (single, batch, invalid type, missing feature).
+- [ ] Test function exists for `/v2/predict` (single).
+- [ ] `pytest` command successfully runs and shows **7 PASSED** for `test_api.py`.
+
+### Documentation
+
+- [ ] `API_Documentation.md` file created in the project root.
+- [ ] `API_Documentation.md` contains setup, run, and endpoint usage instructions.
+- [ ] `GET /apidocs/` endpoint works and shows the interactive Swagger UI in a browser.
+
+### Git
+
+- [ ] All new/modified files committed (`src/app.py`, `src/utils/config.py`, `src/train.py`, `tests/test_api.py`, `API_Documentation.md`, `assignments/Lab 03...md`, `data/processed.dvc`).
+- [ ] No large files (like `.pkl`) are committed to Git.
+- [ ] Meaningful commit messages.
+- [ ] Latest changes pushed to GitHub.
 
 ---
 
@@ -1396,6 +1476,16 @@ You're now ready to:
 - **Lab 6**: Implement **CI/CD** and **Monitoring**
 
 This is the core of MLOps: building reliable, automated systems around your models.
+
+---
+
+### Questions? Issues? Stuck?
+
+- Check the tutorial project for examples.
+- Review Flask, Flasgger, and pytest documentation.
+- Ask in lab sessions or on Discord.
+- Use GitHub Issues for technical questions.
+- Collaborate with classmates (but write your own code!)
 
 ---
 
