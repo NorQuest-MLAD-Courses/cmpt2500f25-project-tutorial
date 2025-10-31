@@ -4,8 +4,10 @@ Provides reusable test data, models, and configurations.
 """
 
 import os
+import shutil
 import tempfile
 from pathlib import Path
+from typing import Dict, Generator
 
 import joblib
 import numpy as np
@@ -15,100 +17,80 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 
+# Local imports
+from src.preprocess import create_preprocessing_pipeline, save_preprocessed_data
 
-@pytest.fixture
-def sample_data():
-    """
-    Create small sample dataset for testing.
-    
-    Returns:
-        DataFrame with sample telecom churn data
-    """
+# --- Constants ---
+# Define the new, correct shape of our preprocessed data
+# 3 numerical + 43 one-hot encoded categorical = 46
+NEW_DATA_SHAPE_COLUMNS = 46
+
+
+@pytest.fixture(scope="session")
+def project_root() -> Path:
+    """Fixture to provide the project root directory."""
+    return Path(__file__).parent.parent
+
+@pytest.fixture(scope="module")
+def temp_output_dir() -> Generator[Path, None, None]:
+    """Fixture to create a temporary directory for test outputs."""
+    dir_path = Path("./temp_test_output")
+    dir_path.mkdir(exist_ok=True)
+    yield dir_path
+    # Teardown: remove the directory after tests
+    shutil.rmtree(dir_path)
+
+# --- Data Fixtures ---
+
+@pytest.fixture(scope="session")
+def sample_csv_data() -> pd.DataFrame:
+    """Fixture to provide a small, sample DataFrame."""
     data = {
-        'customerID': ['C001', 'C002', 'C003', 'C004', 'C005'],
-        'gender': ['Male', 'Female', 'Male', 'Female', 'Male'],
-        'SeniorCitizen': [0, 1, 0, 0, 1],
-        'Partner': ['Yes', 'No', 'Yes', 'No', 'Yes'],
-        'Dependents': ['No', 'No', 'Yes', 'No', 'Yes'],
-        'tenure': [12, 24, 36, 6, 48],
-        'PhoneService': ['Yes', 'Yes', 'No', 'Yes', 'Yes'],
-        'MultipleLines': ['No', 'Yes', 'No', 'No', 'Yes'],
-        'InternetService': ['DSL', 'Fiber optic', 'No', 'DSL', 'Fiber optic'],
-        'OnlineSecurity': ['Yes', 'No', 'No', 'Yes', 'No'],
-        'OnlineBackup': ['No', 'Yes', 'No', 'Yes', 'Yes'],
-        'DeviceProtection': ['Yes', 'No', 'No', 'Yes', 'Yes'],
+        'customerID': [f'1234-{i}' for i in range(5)],
+        'gender': ['Female', 'Male', 'Female', 'Male', 'Male'],
+        'SeniorCitizen': ["No", "Yes", "No", "No", "Yes"], # <-- FIX: Use strings
+        'Partner': ['Yes', 'No', 'No', 'No', 'Yes'],
+        'Dependents': ['No', 'No', 'No', 'No', 'Yes'],
+        'tenure': [1, 34, 2, 45, 12],
+        'PhoneService': ['No', 'Yes', 'Yes', 'No', 'Yes'],
+        'MultipleLines': ['No phone service', 'No', 'No', 'No phone service', 'Yes'],
+        'InternetService': ['DSL', 'DSL', 'DSL', 'DSL', 'Fiber optic'],
+        'OnlineSecurity': ['No', 'Yes', 'Yes', 'Yes', 'No'],
+        'OnlineBackup': ['Yes', 'No', 'Yes', 'No', 'No'],
+        'DeviceProtection': ['No', 'Yes', 'No', 'Yes', 'Yes'],
         'TechSupport': ['No', 'No', 'No', 'Yes', 'No'],
-        'StreamingTV': ['Yes', 'No', 'No', 'Yes', 'Yes'],
-        'StreamingMovies': ['No', 'Yes', 'No', 'No', 'Yes'],
-        'Contract': ['Month-to-month', 'Two year', 'Month-to-month', 'One year', 'Two year'],
-        'PaperlessBilling': ['Yes', 'No', 'Yes', 'No', 'Yes'],
-        'PaymentMethod': ['Electronic check', 'Mailed check', 'Bank transfer', 'Credit card', 'Electronic check'],
-        'MonthlyCharges': [50.5, 70.25, 25.0, 45.75, 95.0],
-        'TotalCharges': ['606', '1686.5', '900', '274.5', '4560'],
+        'StreamingTV': ['No', 'No', 'No', 'No', 'Yes'],
+        'StreamingMovies': ['No', 'No', 'No', 'No', 'Yes'],
+        'Contract': ['Month-to-month', 'One year', 'Month-to-month', 'One year', 'Month-to-month'],
+        'PaperlessBilling': ['Yes', 'No', 'Yes', 'Yes', 'No'],
+        'PaymentMethod': ['Electronic check', 'Mailed check', 'Mailed check', 'Bank transfer (automatic)', 'Credit card (automatic)'],
+        'MonthlyCharges': [29.85, 56.95, 53.85, 42.30, 99.65],
+        'TotalCharges': [29.85, 1889.5, 108.15, 1840.75, 1200.0],
         'Churn': ['No', 'No', 'Yes', 'No', 'Yes']
     }
     return pd.DataFrame(data)
 
+@pytest.fixture(scope="session")
+def sample_csv_file(tmp_path_factory, sample_csv_data: pd.DataFrame) -> Path:
+    """Fixture to create a sample CSV file."""
+    fn = tmp_path_factory.mktemp("data") / "sample_data.csv"
+    sample_csv_data.to_csv(fn, index=False)
+    return fn
 
-@pytest.fixture
-def sample_data_large():
+@pytest.fixture(scope="session")
+def processed_data() -> Dict[str, np.ndarray]:
     """
-    Create larger sample dataset for testing (100 rows).
-    
-    Returns:
-        DataFrame with larger sample data
+    Fixture to provide sample preprocessed data.
+    Uses the NEW, CORRECT shape (46 columns).
     """
-    np.random.seed(42)
-    n_samples = 100
+    # --- THE FIX IS HERE ---
+    X = np.random.rand(100, NEW_DATA_SHAPE_COLUMNS) 
+    y = np.random.randint(0, 2, 100)
     
-    data = {
-        'customerID': [f'C{i:04d}' for i in range(n_samples)],
-        'gender': np.random.choice(['Male', 'Female'], n_samples),
-        'SeniorCitizen': np.random.choice([0, 1], n_samples),
-        'Partner': np.random.choice(['Yes', 'No'], n_samples),
-        'Dependents': np.random.choice(['Yes', 'No'], n_samples),
-        'tenure': np.random.randint(0, 72, n_samples),
-        'PhoneService': np.random.choice(['Yes', 'No'], n_samples),
-        'MultipleLines': np.random.choice(['Yes', 'No', 'No phone service'], n_samples),
-        'InternetService': np.random.choice(['DSL', 'Fiber optic', 'No'], n_samples),
-        'OnlineSecurity': np.random.choice(['Yes', 'No', 'No internet service'], n_samples),
-        'OnlineBackup': np.random.choice(['Yes', 'No', 'No internet service'], n_samples),
-        'DeviceProtection': np.random.choice(['Yes', 'No', 'No internet service'], n_samples),
-        'TechSupport': np.random.choice(['Yes', 'No', 'No internet service'], n_samples),
-        'StreamingTV': np.random.choice(['Yes', 'No', 'No internet service'], n_samples),
-        'StreamingMovies': np.random.choice(['Yes', 'No', 'No internet service'], n_samples),
-        'Contract': np.random.choice(['Month-to-month', 'One year', 'Two year'], n_samples),
-        'PaperlessBilling': np.random.choice(['Yes', 'No'], n_samples),
-        'PaymentMethod': np.random.choice([
-            'Electronic check', 'Mailed check', 'Bank transfer', 'Credit card'
-        ], n_samples),
-        'MonthlyCharges': np.random.uniform(20, 120, n_samples).round(2),
-        'TotalCharges': (np.random.uniform(100, 8000, n_samples).round(2)).astype(str),
-        'Churn': np.random.choice(['Yes', 'No'], n_samples, p=[0.3, 0.7])
-    }
-    
-    return pd.DataFrame(data)
-
-
-@pytest.fixture
-def processed_data():
-    """
-    Create preprocessed training and test data.
-    
-    Returns:
-        Dictionary with X_train, X_test, y_train, y_test
-    """
-    np.random.seed(42)
-    
-    # Create synthetic preprocessed data
-    n_train = 80
-    n_test = 20
-    n_features = 15
-    
-    X_train = np.random.randn(n_train, n_features)
-    X_test = np.random.randn(n_test, n_features)
-    y_train = np.random.choice(['Yes', 'No'], n_train)
-    y_test = np.random.choice(['Yes', 'No'], n_test)
+    # Create train/test split
+    split_idx = int(len(X) * 0.8)
+    X_train, X_test = X[:split_idx], X[split_idx:]
+    y_train, y_test = y[:split_idx], y[split_idx:]
     
     return {
         'X_train': X_train,
@@ -117,233 +99,88 @@ def processed_data():
         'y_test': y_test
     }
 
+# --- Model Fixtures ---
 
-@pytest.fixture
-def trained_model(processed_data):
-    """
-    Create a simple trained model for testing.
-    
-    Returns:
-        Trained RandomForestClassifier
-    """
+@pytest.fixture(scope="module")
+def trained_model(processed_data: Dict[str, np.ndarray]) -> LogisticRegression:
+    """Fixture to provide a basic trained model."""
     X_train = processed_data['X_train']
     y_train = processed_data['y_train']
-    
-    model = RandomForestClassifier(n_estimators=10, random_state=42)
+    model = LogisticRegression(random_state=42, max_iter=100)
     model.fit(X_train, y_train)
-    
     return model
 
+@pytest.fixture(scope="module")
+def saved_model_file(trained_model: LogisticRegression, tmp_path_factory) -> Path:
+    """Fixture to create a sample saved model file."""
+    fn = tmp_path_factory.mktemp("models") / "test_model.pkl"
+    joblib.dump(trained_model, fn)
+    return fn
 
-@pytest.fixture
-def trained_logistic_model(processed_data):
-    """
-    Create a trained logistic regression model for testing.
-    
-    Returns:
-        Trained LogisticRegression
-    """
-    X_train = processed_data['X_train']
-    y_train = processed_data['y_train']
-    
-    model = LogisticRegression(random_state=42, max_iter=1000)
-    model.fit(X_train, y_train)
-    
-    return model
+# --- Preprocessing Fixtures ---
 
-
-@pytest.fixture
-def scaler_fitted():
-    """
-    Create a fitted StandardScaler.
-    
-    Returns:
-        Fitted StandardScaler
-    """
-    X_sample = np.random.randn(50, 10)
-    scaler = StandardScaler()
-    scaler.fit(X_sample)
-    return scaler
-
-
-@pytest.fixture
-def label_encoder_fitted():
-    """
-    Create a fitted LabelEncoder.
-    
-    Returns:
-        Fitted LabelEncoder
-    """
-    y_sample = np.array(['Yes', 'No', 'Yes', 'No', 'Yes'])
-    encoder = LabelEncoder()
-    encoder.fit(y_sample)
-    return encoder
-
-
-@pytest.fixture
-def temp_output_dir(tmp_path):
-    """
-    Create temporary output directory for tests.
-    
-    Args:
-        tmp_path: Pytest's tmp_path fixture
-        
-    Returns:
-        Path to temporary output directory
-    """
-    output_dir = tmp_path / "outputs"
-    output_dir.mkdir()
-    return output_dir
-
-
-@pytest.fixture
-def temp_models_dir(tmp_path):
-    """
-    Create temporary models directory for tests.
-    
-    Args:
-        tmp_path: Pytest's tmp_path fixture
-        
-    Returns:
-        Path to temporary models directory
-    """
-    models_dir = tmp_path / "models"
-    models_dir.mkdir()
-    return models_dir
-
-
-@pytest.fixture
-def temp_data_dir(tmp_path):
-    """
-    Create temporary data directory for tests.
-    
-    Args:
-        tmp_path: Pytest's tmp_path fixture
-        
-    Returns:
-        Path to temporary data directory
-    """
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    return data_dir
-
-
-@pytest.fixture
-def sample_csv_file(tmp_path, sample_data):
-    """
-    Create temporary CSV file with sample data.
-    
-    Args:
-        tmp_path: Pytest's tmp_path fixture
-        sample_data: Sample DataFrame fixture
-        
-    Returns:
-        Path to temporary CSV file
-    """
-    csv_path = tmp_path / "sample_data.csv"
-    sample_data.to_csv(csv_path, index=False)
-    return csv_path
-
-
-@pytest.fixture
-def sample_csv_file_large(tmp_path, sample_data_large):
-    """
-    Create temporary CSV file with larger sample data.
-    
-    Args:
-        tmp_path: Pytest's tmp_path fixture
-        sample_data_large: Large sample DataFrame fixture
-        
-    Returns:
-        Path to temporary CSV file
-    """
-    csv_path = tmp_path / "sample_data_large.csv"
-    sample_data_large.to_csv(csv_path, index=False)
-    return csv_path
-
-
-@pytest.fixture
-def saved_model_file(tmp_path, trained_model):
-    """
-    Create temporary saved model file.
-    
-    Args:
-        tmp_path: Pytest's tmp_path fixture
-        trained_model: Trained model fixture
-        
-    Returns:
-        Path to saved model file
-    """
-    model_path = tmp_path / "test_model.pkl"
-    joblib.dump(trained_model, model_path)
-    return model_path
-
-
-@pytest.fixture
-def saved_preprocessed_data(tmp_path, processed_data):
-    """
-    Create temporary saved preprocessed data file.
-    
-    Args:
-        tmp_path: Pytest's tmp_path fixture
-        processed_data: Processed data fixture
-        
-    Returns:
-        Path to saved data file
-    """
-    data_path = tmp_path / "preprocessed_data.npy"
-    np.save(data_path, processed_data)
-    return data_path
-
-
-@pytest.fixture
-def sample_predictions():
-    """
-    Create sample predictions for testing.
-    
-    Returns:
-        Dictionary with y (true labels) and yhat (predictions)
-    """
-    np.random.seed(42)
-    n_samples = 50
-    
-    y = np.random.choice(['Yes', 'No'], n_samples)
-    # Create predictions with some errors
-    yhat = y.copy()
-    error_indices = np.random.choice(n_samples, size=10, replace=False)
-    yhat[error_indices] = np.where(yhat[error_indices] == 'Yes', 'No', 'Yes')
-    
-    return {'y': y, 'yhat': yhat}
-
-
-@pytest.fixture
-def empty_dataframe():
-    """
-    Create empty DataFrame for testing edge cases.
-    
-    Returns:
-        Empty DataFrame
-    """
-    return pd.DataFrame()
-
-
-@pytest.fixture
-def dataframe_with_missing():
-    """
-    Create DataFrame with missing values for testing.
-    
-    Returns:
-        DataFrame with NaN values
-    """
+@pytest.fixture(scope="session")
+def sample_csv_file_large(tmp_path_factory) -> Path:
+    """Fixture for a larger, more realistic CSV file."""
+    # Create 200 rows of synthetic data
     data = {
-        'feature1': [1, 2, np.nan, 4, 5],
-        'feature2': [np.nan, 2, 3, 4, 5],
-        'feature3': [1, 2, 3, np.nan, 5],
-        'target': ['Yes', 'No', 'Yes', np.nan, 'No']
+        'customerID': [f'cust_{i}' for i in range(200)],
+        'gender': np.random.choice(['Male', 'Female'], 200),
+        'SeniorCitizen': np.random.choice(["No", "Yes"], 200), # <-- FIX: Use strings
+        'Partner': np.random.choice(['Yes', 'No'], 200),
+        'Dependents': np.random.choice(['Yes', 'No'], 200),
+        'tenure': np.random.randint(1, 72, 200),
+        'PhoneService': np.random.choice(['Yes', 'No'], 200),
+        'MultipleLines': np.random.choice(['Yes', 'No', 'No phone service'], 200),
+        'InternetService': np.random.choice(['DSL', 'Fiber optic', 'No'], 200),
+        'OnlineSecurity': np.random.choice(['Yes', 'No', 'No internet service'], 200),
+        'OnlineBackup': np.random.choice(['Yes', 'No', 'No internet service'], 200),
+        'DeviceProtection': np.random.choice(['Yes', 'No', 'No internet service'], 200),
+        'TechSupport': np.random.choice(['Yes', 'No', 'No internet service'], 200),
+        'StreamingTV': np.random.choice(['Yes', 'No', 'No internet service'], 200),
+        'StreamingMovies': np.random.choice(['Yes', 'No', 'No internet service'], 200),
+        'Contract': np.random.choice(['Month-to-month', 'One year', 'Two year'], 200),
+        'PaperlessBilling': np.random.choice(['Yes', 'No'], 200),
+        'PaymentMethod': np.random.choice(['Electronic check', 'Mailed check', 'Bank transfer (automatic)', 'Credit card (automatic)'], 200),
+        'MonthlyCharges': np.random.uniform(20.0, 120.0, 200).round(2),
+        'TotalCharges': np.random.uniform(20.0, 8000.0, 200).round(2),
+        'Churn': np.random.choice(['Yes', 'No'], 200)
     }
-    return pd.DataFrame(data)
+    df = pd.DataFrame(data)
+    
+    # Introduce some missing values
+    df.loc[df.sample(n=10).index, 'TotalCharges'] = np.nan
+    
+    fn = tmp_path_factory.mktemp("data_large") / "large_sample.csv"
+    df.to_csv(fn, index=False)
+    return fn
 
+@pytest.fixture(scope="module")
+def saved_pipeline_artifacts(sample_csv_file_large: Path, tmp_path_factory) -> Dict[str, str]:
+    """
+    Fixture to run the full preprocessing pipeline and save artifacts.
+    This uses the *actual* pipeline, not dummy data.
+    """
+    from src.preprocess import preprocess_pipeline # Local import to use config
+    
+    output_dir = tmp_path_factory.mktemp("processed_artifacts")
+    
+    X_train, X_test, y_train, y_test, pipeline, encoder = preprocess_pipeline(
+        str(sample_csv_file_large),
+        scale=True,
+        use_sklearn_pipeline=True
+    )
+    
+    paths = save_preprocessed_data(
+        X_train, X_test, y_train, y_test,
+        pipeline=pipeline,
+        label_encoder=encoder,
+        output_dir=str(output_dir)
+    )
+    
+    return paths
 
+# This fixture is from the original conftest.py, we keep it.
 @pytest.fixture(autouse=True)
 def reset_random_state():
     """
@@ -352,7 +189,7 @@ def reset_random_state():
     """
     np.random.seed(42)
 
-
+# This fixture is from the original conftest.py, we keep it.
 @pytest.fixture
 def mock_mlflow_run(monkeypatch):
     """
@@ -400,5 +237,3 @@ def mock_mlflow_run(monkeypatch):
     monkeypatch.setattr(mlflow, "log_artifact", mock_log_artifact)
     monkeypatch.setattr(mlflow, "set_tag", mock_set_tag)
     monkeypatch.setattr(mlflow, "set_experiment", mock_set_experiment)
-    
-    return MockRun()
