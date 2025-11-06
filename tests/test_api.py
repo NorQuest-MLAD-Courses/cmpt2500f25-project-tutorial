@@ -94,8 +94,73 @@ def test_v1_predict_invalid_type(client):
 def test_v2_predict_single(client):
     """Test /v2/predict with a single valid record."""
     response = client.post('/v2/predict', json=VALID_PAYLOAD)
-    
+
     assert response.status_code == 200
     assert "prediction" in response.json
     assert "probability" in response.json
     assert response.json["model_version"] == "v2" # Check for v2
+
+def test_v2_predict_batch(client):
+    """Test /v2/predict with a batch (list) of valid records."""
+    # Create a batch of two identical valid records
+    batch_payload = [VALID_PAYLOAD, VALID_PAYLOAD]
+    response = client.post('/v2/predict', json=batch_payload)
+
+    assert response.status_code == 200
+    assert isinstance(response.json, list) # Check that the response is a list
+    assert len(response.json) == 2 # Check that we got two predictions back
+    assert response.json[0]["model_version"] == "v2"
+    assert response.json[1]["model_version"] == "v2"
+
+def test_v1_predict_empty_payload(client):
+    """Test /v1/predict with an empty payload."""
+    response = client.post('/v1/predict', json=None)
+
+    assert response.status_code == 400
+    assert "error" in response.json
+    assert "No input data provided" in response.json["error"]
+
+def test_v1_predict_null_totalcharges(client):
+    """Test /v1/predict with TotalCharges=None (should be handled gracefully)."""
+    payload = VALID_PAYLOAD.copy()
+    payload["TotalCharges"] = None  # Set to None
+
+    response = client.post('/v1/predict', json=payload)
+
+    # Should succeed since the API handles None TotalCharges
+    assert response.status_code == 200
+    assert "prediction" in response.json
+    assert "probability" in response.json
+
+def test_v1_predict_missing_totalcharges(client):
+    """Test /v1/predict without TotalCharges field (should be handled gracefully)."""
+    payload = VALID_PAYLOAD.copy()
+    del payload["TotalCharges"]  # Remove the field entirely
+
+    response = client.post('/v1/predict', json=payload)
+
+    # Should succeed since the API handles missing TotalCharges
+    assert response.status_code == 200
+    assert "prediction" in response.json
+    assert "probability" in response.json
+
+def test_v2_predict_invalid_type(client):
+    """Test /v2/predict with an incorrect data type."""
+    # Copy the valid payload and break it
+    invalid_payload = VALID_PAYLOAD.copy()
+    invalid_payload["MonthlyCharges"] = "fifty-nine"  # Send a string instead of a number
+
+    response = client.post('/v2/predict', json=invalid_payload)
+
+    assert response.status_code == 400 # Expect a Bad Request error
+    assert "error" in response.json
+    assert "Invalid type for MonthlyCharges" in response.json["error"]
+
+def test_empty_list_prediction(client):
+    """Test /v1/predict with an empty list."""
+    response = client.post('/v1/predict', json=[])
+
+    # Should succeed but return empty list
+    assert response.status_code == 200
+    assert isinstance(response.json, list)
+    assert len(response.json) == 0

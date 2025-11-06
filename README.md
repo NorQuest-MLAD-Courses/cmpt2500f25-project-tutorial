@@ -101,6 +101,11 @@ python src/app.py
 
 The server will start on `http://127.0.0.1:5000`.
 
+**Note**: If port 5000 conflicts with other services (e.g., macOS AirPlay), use a different port:
+```sh
+PORT=5002 python src/app.py
+```
+
 You can test if it's running in a new terminal:
 
 ```sh
@@ -225,5 +230,5 @@ cmpt2500f25-project-tutorial/
 
 ---
 
-**Version**: 3.0.0
-**Last Updated**: 2025-10-30
+**Version**: 3.1.0 (Tests Fixed & Enhanced)
+**Last Updated**: 2025-11-06

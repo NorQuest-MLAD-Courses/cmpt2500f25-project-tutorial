@@ -45,21 +45,34 @@ def calculate_accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 def calculate_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
     """
     Calculate multiple evaluation metrics.
-    
+
     Args:
         y_true: True labels
         y_pred: Predicted labels
-        
+
     Returns:
         Dictionary of metrics
     """
+    # Determine the positive label automatically
+    # If labels are numeric (0, 1), use 1 as pos_label
+    # If labels are strings, use the second unique value alphabetically (usually 'Yes')
+    unique_labels = np.unique(y_true)
+    if len(unique_labels) > 0:
+        if np.issubdtype(unique_labels.dtype, np.number):
+            pos_label = 1
+        else:
+            # For string labels, sort and use the last one ('Yes' comes after 'No')
+            pos_label = sorted(unique_labels)[-1]
+    else:
+        pos_label = 1  # Default fallback
+
     metrics = {
         'accuracy': accuracy_score(y_true, y_pred),
-        'precision': precision_score(y_true, y_pred, average='binary', zero_division=0),
-        'recall': recall_score(y_true, y_pred, average='binary', zero_division=0),
-        'f1_score': f1_score(y_true, y_pred, average='binary', zero_division=0)
+        'precision': precision_score(y_true, y_pred, average='binary', pos_label=pos_label, zero_division=0),
+        'recall': recall_score(y_true, y_pred, average='binary', pos_label=pos_label, zero_division=0),
+        'f1_score': f1_score(y_true, y_pred, average='binary', pos_label=pos_label, zero_division=0)
     }
-    
+
     logger.info(f"Metrics calculated: {metrics}")
     return metrics
 
@@ -156,43 +169,57 @@ def evaluate_model(model: Any, X_test: np.ndarray, y_test: np.ndarray) -> Dict[s
 def compare_models(models: Dict[str, Any], X_test: np.ndarray, y_test: np.ndarray) -> pd.DataFrame:
     """
     Compare performance of multiple models.
-    
+
     Args:
         models: Dictionary of trained models
         X_test: Test features
         y_test: Test labels
-        
+
     Returns:
         DataFrame with comparison results sorted by accuracy
     """
     logger.info("Comparing models...")
-    
+
     results = []
-    
+
+    # Determine the positive label automatically
+    unique_labels = np.unique(y_test)
+    if len(unique_labels) > 0:
+        if np.issubdtype(unique_labels.dtype, np.number):
+            pos_label = 1
+        else:
+            # For string labels, sort and use the last one ('Yes' comes after 'No')
+            pos_label = sorted(unique_labels)[-1]
+    else:
+        pos_label = 1  # Default fallback
+
     for model_name, model in models.items():
         logger.info(f"Evaluating {model_name}...")
         y_pred = model.predict(X_test)
-        
+
         metrics = {
             'Model': model_name,
             'Accuracy': accuracy_score(y_test, y_pred),
-            'Precision': precision_score(y_test, y_pred, average='binary', zero_division=0),
-            'Recall': recall_score(y_test, y_pred, average='binary', zero_division=0),
-            'F1-Score': f1_score(y_test, y_pred, average='binary', zero_division=0)
+            'Precision': precision_score(y_test, y_pred, average='binary', pos_label=pos_label, zero_division=0),
+            'Recall': recall_score(y_test, y_pred, average='binary', pos_label=pos_label, zero_division=0),
+            'F1-Score': f1_score(y_test, y_pred, average='binary', pos_label=pos_label, zero_division=0)
         }
-        
+
         # Add ROC-AUC if available
         if hasattr(model, 'predict_proba'):
             y_proba = model.predict_proba(X_test)
             roc_auc = calculate_roc_auc(y_test, y_proba)
             if roc_auc is not None:
                 metrics['ROC-AUC'] = roc_auc
-        
+
         results.append(metrics)
-    
+
     comparison_df = pd.DataFrame(results)
-    comparison_df = comparison_df.sort_values('Accuracy', ascending=False).reset_index(drop=True)
-    
+
+    # Only sort if there are results
+    if not comparison_df.empty:
+        comparison_df = comparison_df.sort_values('Accuracy', ascending=False).reset_index(drop=True)
+
     logger.info("Model comparison completed")
     return comparison_df
 

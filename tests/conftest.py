@@ -353,6 +353,25 @@ def reset_random_state():
     np.random.seed(42)
 
 
+@pytest.fixture(autouse=True)
+def cleanup_mlflow():
+    """
+    Clean up MLflow state between tests to avoid parameter conflicts.
+    This fixture runs automatically for every test.
+    """
+    import mlflow
+
+    # End any active runs before the test
+    while mlflow.active_run() is not None:
+        mlflow.end_run()
+
+    yield
+
+    # End any active runs after the test
+    while mlflow.active_run() is not None:
+        mlflow.end_run()
+
+
 @pytest.fixture
 def mock_mlflow_run(monkeypatch):
     """

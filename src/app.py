@@ -3,6 +3,14 @@ import pandas as pd
 from flask import Flask, request, jsonify
 from flasgger import Swagger
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -42,16 +50,16 @@ try:
     label_encoder = joblib.load('data/processed/label_encoder.pkl')
     model_v1 = joblib.load('models/model_v1.pkl')
     model_v2 = joblib.load('models/model_v2.pkl')
-    
-    print("✅ Models and pipelines loaded successfully.")
+
+    logger.info("✅ Models and pipelines loaded successfully.")
 
 except FileNotFoundError as e:
-    print(f"❌ Error loading models: {e}")
-    print("Please run 'dvc pull' and ensure models are in the 'models/' directory.")
+    logger.error(f"❌ Error loading models: {e}")
+    logger.error("Please run 'dvc pull' and ensure models are in the 'models/' directory.")
     # In a real app, you might exit or return an error state
     pipeline, label_encoder, model_v1, model_v2 = None, None, None, None
 except Exception as e:
-    print(f"❌ An unexpected error occurred: {e}")
+    logger.error(f"❌ An unexpected error occurred: {e}")
     pipeline, label_encoder, model_v1, model_v2 = None, None, None, None
 
 # Define the expected features and their types
@@ -154,11 +162,19 @@ def validate_input(data):
     """
     Validates the input data to ensure it has all required features
     and correct data types.
+
+    Args:
+        data (dict): Customer data dictionary
+
+    Returns:
+        tuple: (error_message, status_code) - (None, 200) if valid
     """
     # Check for missing features
     missing_features = [f for f in REQUIRED_FEATURES if f not in data]
     if missing_features:
-        return f"Missing required features: {', '.join(missing_features)}", 400
+        error_msg = f"Missing required features: {', '.join(missing_features)}"
+        logger.warning(f"Validation failed: {error_msg}")
+        return error_msg, 400
 
     # Check data types
     for feature in NUMERICAL_FEATURES:
@@ -166,16 +182,97 @@ def validate_input(data):
             # Special case for TotalCharges which might be None/null on input
             if feature == 'TotalCharges' and data[feature] is None:
                 continue
-            return f"Invalid type for {feature}: expected int or float, got {type(data[feature]).__name__}", 400
-            
+            error_msg = f"Invalid type for {feature}: expected int or float, got {type(data[feature]).__name__}"
+            logger.warning(f"Validation failed: {error_msg}")
+            return error_msg, 400
+
     for feature in CATEGORICAL_FEATURES:
         if not isinstance(data[feature], str):
             # In preprocess.py, SeniorCitizen (0/1) is mapped to "No"/"Yes".
             # The pipeline is trained on the string "No"/"Yes".
             # Our API validation must therefore expect a string.
-            return f"Invalid type for {feature}: expected str, got {type(data[feature]).__name__}", 400
+            error_msg = f"Invalid type for {feature}: expected str, got {type(data[feature]).__name__}"
+            logger.warning(f"Validation failed: {error_msg}")
+            return error_msg, 400
 
     return None, 200 # No error
+
+
+def make_prediction(json_data, model, model_version):
+    """
+    Shared prediction logic for both v1 and v2 endpoints.
+
+    Args:
+        json_data: Input JSON data (single object or list)
+        model: The trained model to use for prediction
+        model_version (str): Version identifier ("v1" or "v2")
+
+    Returns:
+        tuple: (response_dict, status_code)
+    """
+    if not json_data:
+        logger.warning(f"{model_version}: No input data provided")
+        return {"error": "No input data provided"}, 400
+
+    # Check if the loaded objects are valid
+    if not all([pipeline, label_encoder, model_v1, model_v2]):
+        logger.error(f"{model_version}: Models or pipelines not loaded")
+        return {"error": "Models or pipelines are not loaded. Check server logs."}, 500
+
+    is_batch = isinstance(json_data, list)
+    data_list = json_data if is_batch else [json_data]
+
+    logger.info(f"{model_version}: Received {'batch' if is_batch else 'single'} prediction request with {len(data_list)} item(s)")
+
+    # Validate all items before processing
+    for item in data_list:
+        # Handle potential None for TotalCharges before validation
+        if 'TotalCharges' not in item or item['TotalCharges'] is None:
+            item['TotalCharges'] = 0.0 # Impute with 0, pipeline will handle
+
+        error_msg, status_code = validate_input(item)
+        if error_msg:
+            return {"error": error_msg}, status_code
+
+    # If validation passes for all, proceed with prediction
+    try:
+        # Convert to DataFrame
+        input_df = pd.DataFrame(data_list)
+
+        # Reorder columns to match pipeline's training order
+        input_df = input_df[REQUIRED_FEATURES]
+
+        # Preprocess the data
+        processed_input = pipeline.transform(input_df)
+
+        # Make prediction
+        prediction_numeric = model.predict(processed_input)
+        prediction_proba = model.predict_proba(processed_input)
+
+        # Decode prediction
+        prediction_label = label_encoder.inverse_transform(prediction_numeric)
+
+        # Format output
+        results = []
+        for i in range(len(prediction_label)):
+            # Get the probability of the *predicted* class
+            probability = prediction_proba[i][prediction_numeric[i]]
+            results.append({
+                "prediction": prediction_label[i],
+                "probability": float(probability),
+                "model_version": model_version
+            })
+
+        logger.info(f"{model_version}: Successfully generated {len(results)} prediction(s)")
+
+        # Return single object if input was single, else return list
+        return (results[0] if not is_batch else results), 200
+
+    except Exception as e:
+        # Catch-all for other errors (e.g., preprocessing issues)
+        error_msg = f"An error occurred during prediction: {str(e)}"
+        logger.error(f"{model_version}: {error_msg}")
+        return {"error": error_msg}, 500
 
 
 @app.route('/v1/predict', methods=['POST'])
@@ -289,61 +386,8 @@ def predict_v1():
               example: "Models or pipelines are not loaded. Check server logs."
     """
     json_data = request.get_json()
-    if not json_data:
-        return jsonify({"error": "No input data provided"}), 400
-
-    # Check if the loaded objects are valid
-    if not all([pipeline, label_encoder, model_v1, model_v2]):
-         return jsonify({"error": "Models or pipelines are not loaded. Check server logs."}), 500
-
-    is_batch = isinstance(json_data, list)
-    data_list = json_data if is_batch else [json_data]
-
-    # Validate all items before processing
-    for item in data_list:
-        # Handle potential None for TotalCharges before validation
-        if 'TotalCharges' not in item or item['TotalCharges'] is None:
-            item['TotalCharges'] = 0.0 # Impute with 0, pipeline will handle
-            
-        error_msg, status_code = validate_input(item)
-        if error_msg:
-            return jsonify({"error": error_msg}), status_code
-
-    # If validation passes for all, proceed with prediction
-    try:
-        # Convert to DataFrame
-        input_df = pd.DataFrame(data_list)
-        
-        # Reorder columns to match pipeline's training order
-        input_df = input_df[REQUIRED_FEATURES]
-
-        # Preprocess the data
-        processed_input = pipeline.transform(input_df)
-
-        # Make prediction
-        prediction_numeric = model_v1.predict(processed_input)
-        prediction_proba = model_v1.predict_proba(processed_input)
-
-        # Decode prediction
-        prediction_label = label_encoder.inverse_transform(prediction_numeric)
-        
-        # Format output
-        results = []
-        for i in range(len(prediction_label)):
-            # Get the probability of the *predicted* class
-            probability = prediction_proba[i][prediction_numeric[i]]
-            results.append({
-                "prediction": prediction_label[i],
-                "probability": float(probability),
-                "model_version": "v1"
-            })
-        
-        # Return single object if input was single, else return list
-        return jsonify(results[0] if not is_batch else results)
-
-    except Exception as e:
-        # Catch-all for other errors (e.g., preprocessing issues)
-        return jsonify({"error": f"An error occurred during prediction: {str(e)}"}), 500
+    response_data, status_code = make_prediction(json_data, model_v1, "v1")
+    return jsonify(response_data), status_code
 
 
 @app.route('/v2/predict', methods=['POST'])
@@ -457,61 +501,8 @@ def predict_v2():
               example: "Models or pipelines are not loaded. Check server logs."
     """
     json_data = request.get_json()
-    if not json_data:
-        return jsonify({"error": "No input data provided"}), 400
-
-    # Check if the loaded objects are valid
-    if not all([pipeline, label_encoder, model_v1, model_v2]):
-         return jsonify({"error": "Models or pipelines are not loaded. Check server logs."}), 500
-
-    is_batch = isinstance(json_data, list)
-    data_list = json_data if is_batch else [json_data]
-
-    # Validate all items before processing
-    for item in data_list:
-        # Handle potential None for TotalCharges before validation
-        if 'TotalCharges' not in item or item['TotalCharges'] is None:
-            item['TotalCharges'] = 0.0 # Impute with 0, pipeline will handle
-            
-        error_msg, status_code = validate_input(item)
-        if error_msg:
-            return jsonify({"error": error_msg}), status_code
-
-    # If validation passes for all, proceed with prediction
-    try:
-        # Convert to DataFrame
-        input_df = pd.DataFrame(data_list)
-
-        # Reorder columns to match pipeline's training order
-        input_df = input_df[REQUIRED_FEATURES]
-        
-        # Preprocess the data
-        processed_input = pipeline.transform(input_df)
-
-        # Make prediction
-        prediction_numeric = model_v2.predict(processed_input)
-        prediction_proba = model_v2.predict_proba(processed_input)
-
-        # Decode prediction
-        prediction_label = label_encoder.inverse_transform(prediction_numeric)
-        
-        # Format output
-        results = []
-        for i in range(len(prediction_label)):
-            # Get the probability of the *predicted* class
-            probability = prediction_proba[i][prediction_numeric[i]]
-            results.append({
-                "prediction": prediction_label[i],
-                "probability": float(probability),
-                "model_version": "v2"
-            })
-        
-        # Return single object if input was single, else return list
-        return jsonify(results[0] if not is_batch else results)
-
-    except Exception as e:
-        # Catch-all for other errors (e.g., preprocessing issues)
-        return jsonify({"error": f"An error occurred during prediction: {str(e)}"}), 500
+    response_data, status_code = make_prediction(json_data, model_v2, "v2")
+    return jsonify(response_data), status_code
 
 
 # --- 3. Run the App ---

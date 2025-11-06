@@ -66,25 +66,27 @@ def load_data(filepath: str) -> pd.DataFrame:
 def handle_missing_values(df: pd.DataFrame) -> pd.DataFrame:
     """
     Handle missing values in the dataset.
-    
+
     Args:
         df: Input DataFrame
-        
+
     Returns:
         DataFrame with missing values handled
     """
     df = df.copy()
-    
-    # Convert TotalCharges to numeric (handles spaces and empty strings)
-    df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
-    
-    # Fill missing TotalCharges with 0 (for new customers)
-    df['TotalCharges'].fillna(0, inplace=True)
-    
+
+    # Only process if DataFrame is not empty and has TotalCharges column
+    if not df.empty and 'TotalCharges' in df.columns:
+        # Convert TotalCharges to numeric (handles spaces and empty strings)
+        df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
+
+        # Fill missing TotalCharges with 0 (for new customers)
+        df['TotalCharges'] = df['TotalCharges'].fillna(0)
+
     # Check for any remaining missing values
     missing_count = df.isnull().sum().sum()
     logger.info(f"Missing values handled. Remaining missing values: {missing_count}")
-    
+
     return df
 
 
@@ -291,7 +293,13 @@ def preprocess_pipeline(
         # Use scikit-learn Pipeline (RECOMMENDED)
         X_train_transformed, pipeline = preprocess_data_with_pipeline(X_train, fit=True)
         X_test_transformed, _ = preprocess_data_with_pipeline(X_test, pipeline=pipeline, fit=False)
-        
+
+        # Convert y to numpy arrays if they are pandas Series
+        if hasattr(y_train, 'values'):
+            y_train = y_train.values
+        if hasattr(y_test, 'values'):
+            y_test = y_test.values
+
         logger.info("Preprocessing pipeline completed using scikit-learn Pipeline")
         return X_train_transformed, X_test_transformed, y_train, y_test, pipeline, label_encoder
     
