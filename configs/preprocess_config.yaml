@@ -1,4 +1,5 @@
-# configs/preprocess_config.yaml
+# Preprocessing Configuration for Telecom Churn Prediction
+# This file defines data preprocessing parameters and pipeline settings
 
 # Data configuration
 data:
@@ -22,16 +23,18 @@ mlflow:
 
 # Missing value handling
 missing_values:
-  strategy: drop
-  threshold: 0.5
+  strategy: drop  # Strategy: 'drop', 'impute', or 'fill'
+  threshold: 0.5  # Threshold for dropping columns with missing values
+  fill_value: 0   # Value to use for filling (if strategy is 'fill')
 
 # Feature scaling
 scaling:
-  method: standard
-  with_mean: true
-  with_std: true
+  method: standard  # Options: 'standard', 'minmax', 'robust', or 'none'
+  with_mean: true   # Center data before scaling
+  with_std: true    # Scale data to unit variance
 
 # Feature columns
+# These are automatically detected, but can be overridden here
 features:
   categorical:
     - gender
@@ -49,134 +52,75 @@ features:
     - Contract
     - PaperlessBilling
     - PaymentMethod
-  
+
   numerical:
     - SeniorCitizen
     - tenure
     - MonthlyCharges
     - TotalCharges
 
+  # Columns to drop from the dataset
+  drop_columns:
+    - customerID
+
+# Target encoding
+target:
+  column: Churn
+  encoding:
+    positive_class: "Yes"  # Value indicating churn
+    negative_class: "No"   # Value indicating no churn
+
 # Train-test split
 split:
-  test_size: 0.2
-  random_state: 42
-  stratify: true
+  test_size: 0.2      # Proportion of data for testing (0.0 to 1.0)
+  random_state: 42    # Random seed for reproducibility
+  stratify: true      # Whether to stratify split by target variable
+  shuffle: true       # Whether to shuffle data before splitting
 
 # Pipeline options
 pipeline:
-  use_sklearn_pipeline: true
-  save_artifacts: true
+  use_sklearn_pipeline: true  # Use sklearn ColumnTransformer pipeline
+  save_artifacts: true        # Save preprocessing artifacts (pipeline, encoders)
+
+  # Output filenames
   output_files:
-    data: preprocessed_data.npy
-    pipeline: preprocessing_pipeline.pkl
-    label_encoder: label_encoder.pkl
-# configs/train_config.yaml (Version 3: After MLflow - FINAL VERSION)
+    data: preprocessed_data.npy          # Preprocessed train/test data
+    pipeline: preprocessing_pipeline.pkl  # Fitted preprocessing pipeline
+    label_encoder: label_encoder.pkl      # Target label encoder
 
-# Model configuration
-model:
-  type: random_forest
-  random_state: 42
+# Encoding options
+encoding:
+  categorical:
+    method: onehot              # Options: 'onehot', 'label', 'ordinal'
+    handle_unknown: ignore      # How to handle unknown categories in transform
+    drop_first: false           # Whether to drop first category (avoid multicollinearity)
+    sparse_output: false        # Whether to use sparse matrices
 
-# Model hyperparameters
-hyperparameters:
-  logistic_regression:
-    C: 1.0
-    max_iter: 1000
-    penalty: l2
-    solver: lbfgs
-  
-  random_forest:
-    n_estimators: 100
-    max_depth: null
-    min_samples_split: 2
-    min_samples_leaf: 1
-    max_features: sqrt
-  
-  decision_tree:
-    max_depth: null
-    min_samples_split: 2
-    min_samples_leaf: 1
-    criterion: gini
-  
-  adaboost:
-    n_estimators: 50
-    learning_rate: 1.0
-    algorithm: SAMME.R
-  
-  gradient_boosting:
-    n_estimators: 100
-    learning_rate: 0.1
-    max_depth: 3
-    min_samples_split: 2
-    subsample: 1.0
-  
-  voting_classifier:
-    voting: soft
-    estimators:
-      - gradient_boosting
-      - logistic_regression
-      - adaboost
+  # Special handling for specific features
+  ordinal_features: []  # List of features to encode ordinally (if any)
+  ordinal_categories: {}  # Dict mapping ordinal features to their category order
 
-# Training configuration
-training:
-  tune_hyperparameters: false
-  test_size: 0.2
-  random_state: 42
-  stratify: true
+# Data validation
+validation:
+  check_missing: true         # Check for missing values
+  check_duplicates: true      # Check for duplicate rows
+  check_dtypes: true          # Validate data types
+  check_target_balance: true  # Check target class balance
 
-# Paths
-paths:
-  data:
-    input: data/processed/preprocessed_data.npy  # DVC-tracked
-    raw: data/raw  # DVC-tracked
-    processed: data/processed  # DVC-tracked
-  models:
-    output_dir: models  # Local storage + MLflow artifacts
+  # Thresholds for warnings
+  min_target_ratio: 0.1   # Warn if minority class < 10%
+  max_missing_ratio: 0.3  # Warn if any column has > 30% missing
 
-# DVC configuration
-dvc:
-  remote: origin  # DagsHub remote
-  data_version: v1.0
-  track_models: false  # Use MLflow for models
+# Logging configuration
+logging:
+  level: INFO                  # Logging level: DEBUG, INFO, WARNING, ERROR
+  log_statistics: true         # Log dataset statistics
+  log_transformations: true    # Log each transformation step
+  log_class_distribution: true # Log target class distribution
 
-# MLflow configuration
-mlflow:
-  tracking_uri: null  # null = local mlruns/, or set to DagsHub URL
-  experiment_name: telecom-churn-prediction
-  run_name_prefix: null  # null = auto-generate, or set custom prefix
-  artifact_location: null  # null = use default (mlruns/), or set custom
-  log_models: true  # Log models to MLflow
-  log_artifacts: true  # Log additional artifacts (plots, etc.)
-  tags:
-    project: telecom-churn
-    team: ml-team
-    environment: development
-  autolog: false  # Use manual logging for control
-
-# Hyperparameter tuning grids
-tuning_grids:
-  random_forest:
-    n_estimators: [50, 100, 200]
-    max_depth: [10, 20, 30, null]
-    min_samples_split: [2, 5, 10]
-    min_samples_leaf: [1, 2, 4]
-    max_features: [sqrt, log2]
-  
-  logistic_regression:
-    C: [0.001, 0.01, 0.1, 1, 10, 100]
-    penalty: [l1, l2]
-    solver: [liblinear, saga]
-  
-  gradient_boosting:
-    n_estimators: [50, 100, 200]
-    learning_rate: [0.01, 0.1, 0.2]
-    max_depth: [3, 5, 7]
-    min_samples_split: [2, 5, 10]
-    subsample: [0.8, 0.9, 1.0]
-
-# Cross-validation settings
-cross_validation:
-  cv_folds: 5
-  scoring: accuracy
-  n_jobs: -1
-  verbose: 1
+# Notes:
+# - SeniorCitizen is treated as numerical (0/1) but could be categorical
+# - TotalCharges may have missing values for new customers (handled automatically)
+# - Config can be overridden via CLI arguments
+# - Use --no-scale flag to disable feature scaling
+# - Use --legacy flag for non-pipeline preprocessing

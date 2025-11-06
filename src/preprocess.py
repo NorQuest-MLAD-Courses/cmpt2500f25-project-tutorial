@@ -7,6 +7,8 @@ Handles data loading, cleaning, encoding, and splitting using scikit-learn pipel
 import argparse
 import logging
 import os
+import yaml
+from pathlib import Path
 from typing import Optional, Tuple
 
 # Third-party imports
@@ -32,6 +34,35 @@ from .utils.config import (
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+
+def load_config(config_path: str = None) -> dict:
+    """
+    Load preprocessing configuration from YAML file.
+
+    Args:
+        config_path: Path to YAML config file. If None, uses default config.
+
+    Returns:
+        Configuration dictionary
+
+    Raises:
+        FileNotFoundError: If the config file doesn't exist
+    """
+    if config_path is None:
+        project_root = Path(__file__).parent.parent
+        config_path = project_root / "configs" / "preprocess_config.yaml"
+
+    config_path = Path(config_path)
+
+    if not config_path.exists():
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+
+    logger.info(f"Configuration loaded from: {config_path}")
+    return config
 
 
 def load_data(filepath: str) -> pd.DataFrame:
@@ -245,19 +276,21 @@ def preprocess_data_with_pipeline(
 def preprocess_pipeline(
     filepath: str,
     scale: bool = True,
-    use_sklearn_pipeline: bool = True
+    use_sklearn_pipeline: bool = True,
+    config: dict = None
 ) -> Tuple:
     """
     Complete preprocessing pipeline from raw data to train/test split.
-    
+
     This function now uses scikit-learn pipelines (recommended) by default,
     but maintains backward compatibility with the original approach.
-    
+
     Args:
         filepath: Path to raw data CSV
         scale: Whether to scale features
         use_sklearn_pipeline: Whether to use scikit-learn Pipeline (RECOMMENDED)
-        
+        config: Configuration dictionary (if None, uses hardcoded defaults)
+
     Returns:
         If use_sklearn_pipeline=True:
             (X_train, X_test, y_train, y_test, pipeline, label_encoder)
@@ -266,26 +299,51 @@ def preprocess_pipeline(
             (X_train, X_test, y_train, y_test) if scale=False
     """
     logger.info("Starting preprocessing pipeline...")
-    
+
+    # Extract config values with fallback to hardcoded constants
+    if config:
+        drop_cols = config.get('features', {}).get('drop_columns', DROP_COLUMNS)
+        target_col = config.get('target', {}).get('column', TARGET)
+        test_size = config.get('split', {}).get('test_size', TEST_SIZE)
+        random_state = config.get('split', {}).get('random_state', RANDOM_STATE)
+        stratify = config.get('split', {}).get('stratify', True)
+        shuffle = config.get('split', {}).get('shuffle', True)
+        logger.info("Using configuration from config file")
+    else:
+        drop_cols = DROP_COLUMNS
+        target_col = TARGET
+        test_size = TEST_SIZE
+        random_state = RANDOM_STATE
+        stratify = True
+        shuffle = True
+        logger.info("Using hardcoded default configuration")
+
     # Load data
     df = load_data(filepath)
-    
+
     # Handle missing values
     df = handle_missing_values(df)
-    
+
     # Drop unnecessary columns
-    df = drop_unnecessary_columns(df)
+    df = drop_unnecessary_columns(df, columns=drop_cols)
     
     # Encode target variable
-    df, label_encoder = encode_target(df)
-    
+    df, label_encoder = encode_target(df, target_col=target_col)
+
     # Split features and target
-    X, y = split_features_target(df)
-    
+    X, y = split_features_target(df, target_col=target_col)
+
     # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE
-    )
+    if stratify:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=random_state,
+            stratify=y, shuffle=shuffle
+        )
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=random_state,
+            shuffle=shuffle
+        )
     
     logger.info(f"Train set size: {X_train.shape[0]}, Test set size: {X_test.shape[0]}")
     
@@ -399,52 +457,70 @@ def main():
     parser = argparse.ArgumentParser(
         description='Preprocess telecom churn data for model training'
     )
-    
+
     parser.add_argument(
         '--input',
         type=str,
         required=True,
         help='Path to input CSV file'
     )
-    
+
     parser.add_argument(
         '--output-dir',
         type=str,
         default=DATA_PROCESSED_PATH,
         help=f'Directory to save preprocessed data (default: {DATA_PROCESSED_PATH})'
     )
-    
+
+    parser.add_argument(
+        '--config',
+        type=str,
+        default=None,
+        help='Path to preprocessing config YAML file (default: configs/preprocess_config.yaml)'
+    )
+
     parser.add_argument(
         '--no-scale',
         action='store_true',
         help='Disable feature scaling'
     )
-    
+
     parser.add_argument(
         '--legacy',
         action='store_true',
         help='Use legacy preprocessing approach instead of sklearn pipelines'
     )
-    
+
     parser.add_argument(
         '--test-size',
         type=float,
         default=TEST_SIZE,
         help=f'Proportion of data for testing (default: {TEST_SIZE})'
     )
-    
+
     args = parser.parse_args()
+
+    # Load configuration if provided
+    config = None
+    if args.config or not args.legacy:
+        # Load config by default unless using legacy mode
+        try:
+            config = load_config(args.config)
+        except FileNotFoundError as e:
+            logger.warning(f"Config file not found, using hardcoded defaults: {e}")
+            config = None
     
     # Run preprocessing
     logger.info(f"Preprocessing data from: {args.input}")
-    
+
     if args.legacy:
         # Legacy preprocessing
         if args.no_scale:
             X_train, X_test, y_train, y_test = preprocess_pipeline(
                 args.input,
                 scale=False,
-                use_sklearn_pipeline=False
+                use_sklearn_pipeline=False,
+                config=config
             )
             pipeline = None
             label_encoder = None
@@ -452,7 +528,8 @@ def main():
             X_train, X_test, y_train, y_test, scaler = preprocess_pipeline(
                 args.input,
                 scale=True,
-                use_sklearn_pipeline=False
+                use_sklearn_pipeline=False,
+                config=config
             )
             pipeline = scaler
             label_encoder = None
@@ -461,7 +538,8 @@ def main():
         X_train, X_test, y_train, y_test, pipeline, label_encoder = preprocess_pipeline(
             args.input,
             scale=not args.no_scale,
-            use_sklearn_pipeline=True
+            use_sklearn_pipeline=True,
+            config=config
         )
     
     # Save preprocessed data

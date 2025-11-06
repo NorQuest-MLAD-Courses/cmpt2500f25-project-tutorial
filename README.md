@@ -17,13 +17,13 @@ This project demonstrates a complete ML workflow from data preprocessing to mode
 
 - 🏗️ **Modular architecture** with separation of concerns
 - 🖥️ **CLI interfaces** for all operations
-- 🔧 **Hyperparameter tuning** for optimal performance
-- 📝 **YAML configuration** for flexible deployment
+- 🔧 **Hyperparameter tuning** with configurable grids (comprehensive, quick, and test)
+- 📝 **YAML configuration** for preprocessing, training, and hyperparameter grids
 - 📦 **Data version control (DVC)** with DagsHub remote
-- 📊 **Experiment tracking (MLflow)** with comprehensive logging
-- 🧪 **Automated testing (pytest)** for scripts and the live API
+- 📊 **Experiment tracking (MLflow)** with models stored as artifacts
+- 🧪 **Automated testing (pytest)** with fast test configurations
 - 🐍 **Virtual environments** for reproducibility
-- 🐳 **REST API** for serving models (Flask & Flasgger).
+- 🐳 **REST API** for serving models (Flask & Flasgger)
 
 ---
 
@@ -69,13 +69,50 @@ dvc pull
 
 This will download `preprocessing_pipeline.pkl`, `label_encoder.pkl`, and `preprocessed_data.npy` from the DagsHub remote.
 
-### 3. How to run training
+### 3. How to run preprocessing
+
+The preprocessing pipeline can be run with the CLI, using configuration files for flexible parameter management.
+
+```sh
+# Use default config (configs/preprocess_config.yaml)
+python -m src.preprocess --input data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv --output-dir data/processed
+
+# Use custom config
+python -m src.preprocess --input data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv --config configs/custom_preprocess.yaml
+
+# Legacy mode (hardcoded defaults, no config file)
+python -m src.preprocess --input data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv --legacy
+```
+
+The preprocessing pipeline uses **`configs/preprocess_config.yaml`** for all settings including feature lists, split ratios, and validation options.
+
+### 4. How to run training
 
 You can run the full training pipeline using the CLI. This will train all models, perform hyperparameter tuning, and track every run in MLflow.
 
+**Important**: Models are saved to MLflow by default (best practice). Use `--save` to also save locally.
+
+#### Training Examples
+
 ```sh
+# Train all models with comprehensive hyperparameter tuning (6-20 hours)
 python -m src.train --data data/processed/preprocessed_data.npy --model all --tune
+
+# Train all models with quick tuning config (10-30 minutes)
+python -m src.train --data data/processed/preprocessed_data.npy --model all --tune --config configs/quick_tune_config.yaml
+
+# Train a single model without tuning (fast)
+python -m src.train --data data/processed/preprocessed_data.npy --model random_forest
+
+# Train with custom config and save to local disk
+python -m src.train --data data/processed/preprocessed_data.npy --model all --tune --config configs/custom_config.yaml --save
 ```
+
+#### Configuration Files
+
+- **`configs/train_config.yaml`**: Comprehensive hyperparameter grids for production (~193k combinations)
+- **`configs/quick_tune_config.yaml`**: Reduced grids for faster tuning (~1.3k combinations)
+- **`configs/test_config.yaml`**: Minimal grids for automated tests (~48 combinations)
 
 To view the results, run the MLflow UI:
 
@@ -83,7 +120,9 @@ To view the results, run the MLflow UI:
 mlflow ui
 ```
 
-### 4. How to run tests
+Then navigate to `http://127.0.0.1:5000` to view experiments, compare models, and access saved model artifacts.
+
+### 5. How to run tests
 
 This project uses `pytest` for automated testing. You can run all tests (including the new API tests) with a single command.
 
@@ -91,7 +130,20 @@ This project uses `pytest` for automated testing. You can run all tests (includi
 pytest
 ```
 
-### 5. How to run the API Server (Lab 03)
+For more targeted testing:
+
+```sh
+# Run only fast tests (skip slow hyperparameter tuning tests)
+pytest -m "not slow"
+
+# Run only integration tests
+pytest -m integration
+
+# Run with verbose output
+pytest -v
+```
+
+### 6. How to run the API Server (Lab 03)
 
 To serve your trained models, run the Flask API server.
 
@@ -102,6 +154,7 @@ python src/app.py
 The server will start on `http://127.0.0.1:5000`.
 
 **Note**: If port 5000 conflicts with other services (e.g., macOS AirPlay), use a different port:
+
 ```sh
 PORT=5002 python src/app.py
 ```
@@ -129,11 +182,15 @@ cmpt2500f25-project-tutorial/
 ├── .venv/                 # Python virtual environment (Ignored)
 ├── assignments/           # Lab instructions and guides
 ├── configs/               # YAML configuration files
+│   ├── preprocess_config.yaml  # Preprocessing settings (features, splits, etc.)
+│   ├── train_config.yaml       # Comprehensive hyperparameter grids (production)
+│   ├── quick_tune_config.yaml  # Reduced grids for faster tuning
+│   └── test_config.yaml        # Minimal grids for automated tests
 ├── data/
 │   ├── processed/         # DVC-tracked processed data and pipelines
 │   └── raw/               # DVC-tracked raw data
-├── models/                # Locally-saved models (e.g., model_v1.pkl)
-├── mlruns/                # MLflow experiment tracking data (Ignored)
+├── models/                # Optional local model storage (use --save flag)
+├── mlruns/                # MLflow experiment tracking and model artifacts (Ignored)
 ├── notebooks/             # Jupyter notebooks for exploration (EDA)
 ├── src/                   # Main source code
 │   ├── utils/             # Utility functions and config
@@ -181,10 +238,13 @@ cmpt2500f25-project-tutorial/
 - CLI interfaces (`argparse`)
 - Hyperparameter tuning (`GridSearchCV`)
 - Scikit-learn pipelines (`pipeline.pkl`)
-- YAML configuration (`src/utils/config.py`)
+- YAML configuration files for preprocessing and training
+- Configuration loading with `--config` CLI argument
+- Flexible hyperparameter grids (comprehensive, quick, and test configs)
 - Unit testing setup (`pytest`)
 - DVC setup with DagsHub (`dvc pull`)
 - MLflow integration (`mlflow ui`)
+- MLflow best practices (models saved to MLflow by default)
 
 ### ✅ Completed (Lab 03)
 
@@ -230,5 +290,13 @@ cmpt2500f25-project-tutorial/
 
 ---
 
-**Version**: 3.1.0 (Tests Fixed & Enhanced)
+**Version**: 4.0.0 (Configuration Architecture & Test Optimization)
 **Last Updated**: 2025-11-06
+
+### Recent Updates (v4.0.0)
+
+- Refactored to YAML-based configuration for preprocessing and training
+- Added flexible hyperparameter grid configs (comprehensive, quick, test)
+- Optimized tests with minimal grids (11s vs hours)
+- Implemented MLflow best practices (models in MLflow by default)
+- Added `--config` CLI argument to all training and preprocessing commands

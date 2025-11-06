@@ -1,6 +1,95 @@
 import pytest
 import json
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.pipeline import Pipeline
 from src.app import app as flask_app # Import our Flask app
+import src.app
+
+# Create mock models and pipelines for testing
+@pytest.fixture(autouse=True)
+def setup_test_models(monkeypatch):
+    """Set up mock models and pipelines for API testing."""
+
+    # Create a simple preprocessing pipeline
+    numerical_features = ["tenure", "MonthlyCharges", "TotalCharges"]
+    categorical_features = [
+        "gender", "Partner", "Dependents", "PhoneService", "PaperlessBilling",
+        "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup",
+        "DeviceProtection", "TechSupport", "StreamingTV", "StreamingMovies",
+        "Contract", "PaymentMethod", "SeniorCitizen"
+    ]
+
+    preprocessing_pipeline = ColumnTransformer(
+        transformers=[
+            ('num', StandardScaler(), numerical_features),
+            ('cat', OneHotEncoder(handle_unknown='ignore', sparse_output=False), categorical_features)
+        ]
+    )
+
+    # Create a label encoder
+    label_encoder = LabelEncoder()
+    label_encoder.fit(['No', 'Yes'])
+
+    # Create mock models - simple trained RandomForest classifiers
+    # They need to be fitted with the right shape
+    np.random.seed(42)
+
+    # Create synthetic training data with the correct feature names
+    import pandas as pd
+    all_features = ["gender", "Partner", "Dependents", "PhoneService", "PaperlessBilling",
+                    "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup",
+                    "DeviceProtection", "TechSupport", "StreamingTV", "StreamingMovies",
+                    "Contract", "PaymentMethod", "tenure", "MonthlyCharges", "TotalCharges",
+                    "SeniorCitizen"]
+
+    synthetic_data = {
+        "tenure": np.random.randint(1, 72, 100),
+        "MonthlyCharges": np.random.uniform(20, 120, 100),
+        "TotalCharges": np.random.uniform(100, 8000, 100),
+        "Contract": np.random.choice(["Month-to-month", "One year", "Two year"], 100),
+        "PaymentMethod": np.random.choice(["Electronic check", "Mailed check", "Bank transfer", "Credit card"], 100),
+        "OnlineSecurity": np.random.choice(["Yes", "No", "No internet service"], 100),
+        "TechSupport": np.random.choice(["Yes", "No", "No internet service"], 100),
+        "InternetService": np.random.choice(["DSL", "Fiber optic", "No"], 100),
+        "gender": np.random.choice(["Male", "Female"], 100),
+        "SeniorCitizen": np.random.choice(["Yes", "No"], 100),
+        "Partner": np.random.choice(["Yes", "No"], 100),
+        "Dependents": np.random.choice(["Yes", "No"], 100),
+        "PhoneService": np.random.choice(["Yes", "No"], 100),
+        "MultipleLines": np.random.choice(["Yes", "No", "No phone service"], 100),
+        "PaperlessBilling": np.random.choice(["Yes", "No"], 100),
+        "OnlineBackup": np.random.choice(["Yes", "No", "No internet service"], 100),
+        "DeviceProtection": np.random.choice(["Yes", "No", "No internet service"], 100),
+        "StreamingTV": np.random.choice(["Yes", "No", "No internet service"], 100),
+        "StreamingMovies": np.random.choice(["Yes", "No", "No internet service"], 100),
+    }
+
+    X_train = pd.DataFrame(synthetic_data)
+    y_train = np.random.choice(['No', 'Yes'], 100)
+
+    # Encode labels numerically for training
+    y_train_encoded = label_encoder.transform(y_train)
+
+    # Fit the preprocessing pipeline
+    preprocessing_pipeline.fit(X_train)
+    X_train_processed = preprocessing_pipeline.transform(X_train)
+
+    # Train mock models on encoded labels
+    model_v1 = RandomForestClassifier(n_estimators=10, random_state=42)
+    model_v1.fit(X_train_processed, y_train_encoded)
+
+    model_v2 = RandomForestClassifier(n_estimators=10, random_state=43)
+    model_v2.fit(X_train_processed, y_train_encoded)
+
+    # Patch the global variables in src.app
+    monkeypatch.setattr(src.app, 'pipeline', preprocessing_pipeline)
+    monkeypatch.setattr(src.app, 'label_encoder', label_encoder)
+    monkeypatch.setattr(src.app, 'model_v1', model_v1)
+    monkeypatch.setattr(src.app, 'model_v2', model_v2)
 
 # This is the pytest fixture
 @pytest.fixture
@@ -8,7 +97,7 @@ def client():
     """Create a test client for the Flask app."""
     # Set the app to testing mode
     flask_app.config['TESTING'] = True
-    
+
     # Create a test client using the Flask application context
     with flask_app.test_client() as client:
         yield client # Provide this client to the test functions

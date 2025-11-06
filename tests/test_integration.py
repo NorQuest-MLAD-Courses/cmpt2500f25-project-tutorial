@@ -4,6 +4,7 @@ Tests end-to-end pipelines from data to deployment.
 """
 
 import json
+import yaml
 from pathlib import Path
 
 import joblib
@@ -15,6 +16,14 @@ from src.evaluate import compare_models, evaluate_model
 from src.predict import ModelPredictor, predict
 from src.preprocess import preprocess_pipeline, save_preprocessed_data
 from src.train import save_model, train_all_models, train_random_forest
+
+
+# Load test config for fast hyperparameter tuning in tests
+def load_test_config():
+    """Load minimal test configuration for fast testing."""
+    config_path = Path(__file__).parent.parent / "configs" / "test_config.yaml"
+    with open(config_path, 'r') as f:
+        return yaml.safe_load(f)
 
 
 @pytest.mark.integration
@@ -130,20 +139,27 @@ class TestModelTrainingPipeline:
         assert Path(model_path).exists()
     
     def test_hyperparameter_tuning_workflow(self, processed_data):
-        """Test workflow with hyperparameter tuning."""
+        """Test workflow with hyperparameter tuning using minimal test config."""
         X_train = processed_data['X_train']
         y_train = processed_data['y_train']
         X_test = processed_data['X_test']
         y_test = processed_data['y_test']
-        
-        # Train with tuning
+
+        # Load minimal test config for fast testing
+        test_config = load_test_config()
+
+        # Train with tuning (using minimal test grid)
         model_default = train_random_forest(X_train, y_train, tune_hyperparameters=False)
-        model_tuned = train_random_forest(X_train, y_train, tune_hyperparameters=True)
-        
+        model_tuned = train_random_forest(
+            X_train, y_train,
+            tune_hyperparameters=True,
+            config=test_config  # Use test config with minimal grid
+        )
+
         # Evaluate both
         results_default = evaluate_model(model_default, X_test, y_test)
         results_tuned = evaluate_model(model_tuned, X_test, y_test)
-        
+
         # Both should have valid metrics
         assert 0.0 <= results_default['accuracy'] <= 1.0
         assert 0.0 <= results_tuned['accuracy'] <= 1.0

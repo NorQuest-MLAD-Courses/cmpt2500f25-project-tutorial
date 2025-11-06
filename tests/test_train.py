@@ -4,6 +4,7 @@ Tests model training, hyperparameter tuning, model saving, and MLflow integratio
 """
 
 import os
+import yaml
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -31,6 +32,14 @@ from src.train import (
     train_random_forest,
     train_voting_classifier
 )
+
+
+# Load test config for fast hyperparameter tuning in tests
+def load_test_config():
+    """Load minimal test configuration for fast testing."""
+    config_path = Path(__file__).parent.parent / "configs" / "test_config.yaml"
+    with open(config_path, 'r') as f:
+        return yaml.safe_load(f)
 
 
 class TestTrainLogisticRegression:
@@ -64,12 +73,19 @@ class TestTrainLogisticRegression:
     
     @pytest.mark.slow
     def test_train_logistic_regression_with_tuning(self, processed_data):
-        """Test training with hyperparameter tuning."""
+        """Test training with hyperparameter tuning using minimal test config."""
         X_train = processed_data['X_train']
         y_train = processed_data['y_train']
-        
-        model = train_logistic_regression(X_train, y_train, tune_hyperparameters=True)
-        
+
+        # Load minimal test config for fast testing
+        test_config = load_test_config()
+
+        model = train_logistic_regression(
+            X_train, y_train,
+            tune_hyperparameters=True,
+            config=test_config  # Use test config with minimal grid
+        )
+
         assert isinstance(model, LogisticRegression)
         assert hasattr(model, 'coef_')
 
@@ -106,12 +122,19 @@ class TestTrainRandomForest:
     
     @pytest.mark.slow
     def test_train_random_forest_with_tuning(self, processed_data):
-        """Test training with hyperparameter tuning."""
+        """Test training with hyperparameter tuning using minimal test config."""
         X_train = processed_data['X_train']
         y_train = processed_data['y_train']
-        
-        model = train_random_forest(X_train, y_train, tune_hyperparameters=True)
-        
+
+        # Load minimal test config for fast testing
+        test_config = load_test_config()
+
+        model = train_random_forest(
+            X_train, y_train,
+            tune_hyperparameters=True,
+            config=test_config  # Use test config with minimal grid
+        )
+
         assert isinstance(model, RandomForestClassifier)
         assert hasattr(model, 'estimators_')
     

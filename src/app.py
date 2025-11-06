@@ -210,9 +210,14 @@ def make_prediction(json_data, model, model_version):
     Returns:
         tuple: (response_dict, status_code)
     """
-    if not json_data:
+    if json_data is None:
         logger.warning(f"{model_version}: No input data provided")
         return {"error": "No input data provided"}, 400
+
+    # Handle empty list - return empty list
+    if isinstance(json_data, list) and len(json_data) == 0:
+        logger.info(f"{model_version}: Empty list provided, returning empty list")
+        return [], 200
 
     # Check if the loaded objects are valid
     if not all([pipeline, label_encoder, model_v1, model_v2]):
@@ -385,7 +390,7 @@ def predict_v1():
               type: "string"
               example: "Models or pipelines are not loaded. Check server logs."
     """
-    json_data = request.get_json()
+    json_data = request.get_json(silent=True)
     response_data, status_code = make_prediction(json_data, model_v1, "v1")
     return jsonify(response_data), status_code
 
@@ -500,7 +505,7 @@ def predict_v2():
               type: "string"
               example: "Models or pipelines are not loaded. Check server logs."
     """
-    json_data = request.get_json()
+    json_data = request.get_json(silent=True)
     response_data, status_code = make_prediction(json_data, model_v2, "v2")
     return jsonify(response_data), status_code
 

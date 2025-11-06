@@ -1,0 +1,51 @@
+# Test Configuration - Minimal hyperparameter grids for fast testing
+# This config is used by tests to verify functionality without long training times
+
+# Minimal tuning grids for testing (total ~48 combinations across all models)
+tuning_grids:
+  logistic_regression:
+    C: [0.1, 1.0]
+    penalty: [l2]
+    solver: [liblinear]
+    max_iter: [1000]
+    class_weight: [null, balanced]
+
+  random_forest:
+    n_estimators: [10, 50]
+    max_depth: [5, 10, null]
+    min_samples_split: [2, 5]
+    min_samples_leaf: [1, 2]
+    max_features: [sqrt]
+    bootstrap: [True]
+    class_weight: [null]
+
+  decision_tree:
+    max_depth: [5, 10]
+    min_samples_split: [2, 5]
+    min_samples_leaf: [1, 2]
+    criterion: [gini]
+    splitter: [best]
+    max_features: [null]
+    class_weight: [null]
+
+  adaboost:
+    n_estimators: [10, 50]
+    learning_rate: [0.5, 1.0]
+    algorithm: [SAMME.R]
+
+  gradient_boosting:
+    n_estimators: [10, 50]
+    learning_rate: [0.1]
+    max_depth: [3, 5]
+    min_samples_split: [2]
+    min_samples_leaf: [1]
+    subsample: [1.0]
+    max_features: [null]
+
+# Fast cross-validation settings
+cv_folds: 2  # Use 2-fold CV for speed in tests
+
+# MLflow settings (use test experiment)
+mlflow:
+  tracking_uri: mlruns
+  experiment_name: Test Churn Prediction

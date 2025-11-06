@@ -14,7 +14,9 @@ import argparse
 import logging
 import os
 import pickle
+import yaml
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 # Third-party imports
@@ -44,6 +46,37 @@ from .utils.config import MODELS_PATH, RANDOM_STATE
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+
+def load_config(config_path: str = None) -> dict:
+    """
+    Load training configuration from YAML file.
+
+    Args:
+        config_path: Path to config file. If None, uses default train_config.yaml
+
+    Returns:
+        Dictionary containing configuration
+    """
+    if config_path is None:
+        # Default to configs/train_config.yaml relative to project root
+        project_root = Path(__file__).parent.parent
+        config_path = project_root / "configs" / "train_config.yaml"
+
+    config_path = Path(config_path)
+
+    if not config_path.exists():
+        logger.warning(f"Config file not found: {config_path}. Using hardcoded defaults.")
+        return {}
+
+    try:
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        logger.info(f"Loaded configuration from: {config_path}")
+        return config
+    except Exception as e:
+        logger.error(f"Error loading config file: {e}")
+        return {}
 
 
 def safe_log_params(params: dict):
@@ -84,34 +117,44 @@ def safe_log_metrics(metrics: dict):
 
 
 def train_logistic_regression(
-    X_train: np.ndarray, 
+    X_train: np.ndarray,
     y_train: np.ndarray,
     tune_hyperparameters: bool = False,
+    config: dict = None,
     **kwargs
 ) -> LogisticRegression:
     """
     Train Logistic Regression model with optional hyperparameter tuning.
-    
+
     Args:
         X_train: Training features
         y_train: Training target
         tune_hyperparameters: Whether to perform hyperparameter tuning
+        config: Configuration dictionary (if None, uses defaults)
         **kwargs: Additional parameters for LogisticRegression
-        
+
     Returns:
         Trained LogisticRegression model
     """
     logger.info("Training Logistic Regression...")
-    
+
     if tune_hyperparameters:
-        logger.info("Performing hyperparameter tuning...")
-        param_grid = {
-            'C': [0.001, 0.01, 0.1, 1, 10, 100],
-            'penalty': ['l1', 'l2'],
-            'solver': ['liblinear', 'saga'],
-            'max_iter': [1000]
-        }
-        
+        logger.info("Performing comprehensive hyperparameter tuning...")
+
+        # Load param_grid from config or use defaults
+        if config and 'tuning_grids' in config and 'logistic_regression' in config['tuning_grids']:
+            param_grid = config['tuning_grids']['logistic_regression']
+            logger.info("Using hyperparameter grid from config file")
+        else:
+            param_grid = {
+                'C': [0.0001, 0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 100.0, 500.0],
+                'penalty': ['l1', 'l2'],
+                'solver': ['liblinear', 'saga'],
+                'max_iter': [1000, 2000],
+                'class_weight': [None, 'balanced']
+            }
+            logger.info("Using default hyperparameter grid")
+
         # Log parameter grid to MLflow
         safe_log_params({"param_grid": str(param_grid)})
 
@@ -151,32 +194,43 @@ def train_random_forest(
     X_train: np.ndarray,
     y_train: np.ndarray,
     tune_hyperparameters: bool = False,
+    config: dict = None,
     **kwargs
 ) -> RandomForestClassifier:
     """
     Train Random Forest Classifier with optional hyperparameter tuning.
-    
+
     Args:
         X_train: Training features
         y_train: Training target
         tune_hyperparameters: Whether to perform hyperparameter tuning
+        config: Configuration dictionary (if None, uses defaults)
         **kwargs: Additional parameters for RandomForestClassifier
-        
+
     Returns:
         Trained RandomForestClassifier model
     """
     logger.info("Training Random Forest...")
-    
+
     if tune_hyperparameters:
-        logger.info("Performing hyperparameter tuning...")
-        param_grid = {
-            'n_estimators': [50, 100, 200],
-            'max_depth': [10, 20, 30, None],
-            'min_samples_split': [2, 5, 10],
-            'min_samples_leaf': [1, 2, 4],
-            'max_features': ['sqrt', 'log2']
-        }
-        
+        logger.info("Performing comprehensive hyperparameter tuning...")
+
+        # Load param_grid from config or use defaults
+        if config and 'tuning_grids' in config and 'random_forest' in config['tuning_grids']:
+            param_grid = config['tuning_grids']['random_forest']
+            logger.info("Using hyperparameter grid from config file")
+        else:
+            param_grid = {
+                'n_estimators': [50, 100, 150, 200, 300, 500],
+                'max_depth': [5, 10, 15, 20, 30, 50, None],
+                'min_samples_split': [2, 5, 10, 15, 20],
+                'min_samples_leaf': [1, 2, 4, 6, 8],
+                'max_features': ['sqrt', 'log2', None],
+                'bootstrap': [True, False],
+                'class_weight': [None, 'balanced', 'balanced_subsample']
+            }
+            logger.info("Using default hyperparameter grid")
+
         # Log parameter grid to MLflow
         safe_log_params({"param_grid": str(param_grid)})
         
@@ -220,31 +274,43 @@ def train_decision_tree(
     X_train: np.ndarray,
     y_train: np.ndarray,
     tune_hyperparameters: bool = False,
+    config: dict = None,
     **kwargs
 ) -> DecisionTreeClassifier:
     """
     Train Decision Tree Classifier with optional hyperparameter tuning.
-    
+
     Args:
         X_train: Training features
         y_train: Training target
         tune_hyperparameters: Whether to perform hyperparameter tuning
+        config: Configuration dictionary (if None, uses defaults)
         **kwargs: Additional parameters for DecisionTreeClassifier
-        
+
     Returns:
         Trained DecisionTreeClassifier model
     """
     logger.info("Training Decision Tree...")
-    
+
     if tune_hyperparameters:
-        logger.info("Performing hyperparameter tuning...")
-        param_grid = {
-            'max_depth': [3, 5, 10, 15, 20, None],
-            'min_samples_split': [2, 5, 10, 20],
-            'min_samples_leaf': [1, 2, 4, 8],
-            'criterion': ['gini', 'entropy']
-        }
-        
+        logger.info("Performing comprehensive hyperparameter tuning...")
+
+        # Load param_grid from config or use defaults
+        if config and 'tuning_grids' in config and 'decision_tree' in config['tuning_grids']:
+            param_grid = config['tuning_grids']['decision_tree']
+            logger.info("Using hyperparameter grid from config file")
+        else:
+            param_grid = {
+                'max_depth': [3, 5, 7, 10, 15, 20, 30, 50, None],
+                'min_samples_split': [2, 5, 10, 15, 20, 30],
+                'min_samples_leaf': [1, 2, 4, 6, 8, 10, 15],
+                'criterion': ['gini', 'entropy', 'log_loss'],
+                'splitter': ['best', 'random'],
+                'max_features': ['sqrt', 'log2', None],
+                'class_weight': [None, 'balanced']
+            }
+            logger.info("Using default hyperparameter grid")
+
         # Log parameter grid to MLflow
         safe_log_params({"param_grid": str(param_grid)})
         
@@ -288,30 +354,39 @@ def train_adaboost(
     X_train: np.ndarray,
     y_train: np.ndarray,
     tune_hyperparameters: bool = False,
+    config: dict = None,
     **kwargs
 ) -> AdaBoostClassifier:
     """
     Train AdaBoost Classifier with optional hyperparameter tuning.
-    
+
     Args:
         X_train: Training features
         y_train: Training target
         tune_hyperparameters: Whether to perform hyperparameter tuning
+        config: Configuration dictionary (if None, uses defaults)
         **kwargs: Additional parameters for AdaBoostClassifier
-        
+
     Returns:
         Trained AdaBoostClassifier model
     """
     logger.info("Training AdaBoost...")
-    
+
     if tune_hyperparameters:
-        logger.info("Performing hyperparameter tuning...")
-        param_grid = {
-            'n_estimators': [50, 100, 200],
-            'learning_rate': [0.01, 0.1, 0.5, 1.0],
-            'algorithm': ['SAMME', 'SAMME.R']
-        }
-        
+        logger.info("Performing comprehensive hyperparameter tuning...")
+
+        # Load param_grid from config or use defaults
+        if config and 'tuning_grids' in config and 'adaboost' in config['tuning_grids']:
+            param_grid = config['tuning_grids']['adaboost']
+            logger.info("Using hyperparameter grid from config file")
+        else:
+            param_grid = {
+                'n_estimators': [50, 75, 100, 150, 200, 300, 500],
+                'learning_rate': [0.001, 0.01, 0.05, 0.1, 0.2, 0.5, 0.8, 1.0, 1.5, 2.0],
+                'algorithm': ['SAMME', 'SAMME.R']
+            }
+            logger.info("Using default hyperparameter grid")
+
         # Log parameter grid to MLflow
         safe_log_params({"param_grid": str(param_grid)})
         
@@ -354,32 +429,43 @@ def train_gradient_boosting(
     X_train: np.ndarray,
     y_train: np.ndarray,
     tune_hyperparameters: bool = False,
+    config: dict = None,
     **kwargs
 ) -> GradientBoostingClassifier:
     """
     Train Gradient Boosting Classifier with optional hyperparameter tuning.
-    
+
     Args:
         X_train: Training features
         y_train: Training target
         tune_hyperparameters: Whether to perform hyperparameter tuning
+        config: Configuration dictionary (if None, uses defaults)
         **kwargs: Additional parameters for GradientBoostingClassifier
-        
+
     Returns:
         Trained GradientBoostingClassifier model
     """
     logger.info("Training Gradient Boosting...")
-    
+
     if tune_hyperparameters:
-        logger.info("Performing hyperparameter tuning...")
-        param_grid = {
-            'n_estimators': [50, 100, 200],
-            'learning_rate': [0.01, 0.1, 0.2],
-            'max_depth': [3, 5, 7],
-            'min_samples_split': [2, 5, 10],
-            'subsample': [0.8, 0.9, 1.0]
-        }
-        
+        logger.info("Performing comprehensive hyperparameter tuning...")
+
+        # Load param_grid from config or use defaults
+        if config and 'tuning_grids' in config and 'gradient_boosting' in config['tuning_grids']:
+            param_grid = config['tuning_grids']['gradient_boosting']
+            logger.info("Using hyperparameter grid from config file")
+        else:
+            param_grid = {
+                'n_estimators': [50, 100, 150, 200, 300, 500],
+                'learning_rate': [0.001, 0.01, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5],
+                'max_depth': [3, 4, 5, 6, 7, 8, 10],
+                'min_samples_split': [2, 5, 10, 15, 20],
+                'min_samples_leaf': [1, 2, 4, 6, 8],
+                'subsample': [0.6, 0.7, 0.8, 0.9, 1.0],
+                'max_features': ['sqrt', 'log2', None]
+            }
+            logger.info("Using default hyperparameter grid")
+
         # Log parameter grid to MLflow
         safe_log_params({"param_grid": str(param_grid)})
         
@@ -521,30 +607,32 @@ def evaluate_model(model: Any, X_test: np.ndarray, y_test: np.ndarray) -> Dict[s
 def train_all_models(
     X_train: np.ndarray,
     y_train: np.ndarray,
-    tune_hyperparameters: bool = False
+    tune_hyperparameters: bool = False,
+    config: dict = None
 ) -> Dict[str, Any]:
     """
     Train all available models and return them in a dictionary.
-    
+
     Args:
         X_train: Training features
         y_train: Training target
         tune_hyperparameters: Whether to perform hyperparameter tuning
-        
+        config: Configuration dictionary (if None, uses defaults)
+
     Returns:
         Dictionary of trained models
     """
     logger.info("Training all models...")
-    
+
     models = {
-        'logistic_regression': train_logistic_regression(X_train, y_train, tune_hyperparameters),
-        'random_forest': train_random_forest(X_train, y_train, tune_hyperparameters),
-        'decision_tree': train_decision_tree(X_train, y_train, tune_hyperparameters),
-        'adaboost': train_adaboost(X_train, y_train, tune_hyperparameters),
-        'gradient_boosting': train_gradient_boosting(X_train, y_train, tune_hyperparameters),
+        'logistic_regression': train_logistic_regression(X_train, y_train, tune_hyperparameters, config),
+        'random_forest': train_random_forest(X_train, y_train, tune_hyperparameters, config),
+        'decision_tree': train_decision_tree(X_train, y_train, tune_hyperparameters, config),
+        'adaboost': train_adaboost(X_train, y_train, tune_hyperparameters, config),
+        'gradient_boosting': train_gradient_boosting(X_train, y_train, tune_hyperparameters, config),
         'voting_classifier': train_voting_classifier(X_train, y_train)
     }
-    
+
     logger.info(f"Trained {len(models)} models successfully")
     return models
 
@@ -663,8 +751,22 @@ def main():
         default='telecom-churn-prediction',
         help='MLflow experiment name (default: telecom-churn-prediction)'
     )
-    
+
+    parser.add_argument(
+        '--config',
+        type=str,
+        default=None,
+        help='Path to training config YAML file (default: configs/train_config.yaml)'
+    )
+
     args = parser.parse_args()
+
+    # Load configuration
+    config = load_config(args.config)
+    if config:
+        logger.info(f"Using configuration from: {args.config or 'configs/train_config.yaml'}")
+    else:
+        logger.info("Using hardcoded default hyperparameters")
     
     # Set MLflow experiment
     mlflow.set_experiment(args.experiment_name)
@@ -730,7 +832,7 @@ def main():
                 if model_name == 'voting_classifier':
                     model = trainer(X_train, y_train)
                 else:
-                    model = trainer(X_train, y_train, tune_hyperparameters=args.tune)
+                    model = trainer(X_train, y_train, tune_hyperparameters=args.tune, config=config)
 
                 # Evaluate model
                 metrics = evaluate_model(model, X_test, y_test)
@@ -817,7 +919,7 @@ def main():
             if args.model == 'voting_classifier':
                 model = trainer(X_train, y_train)
             else:
-                model = trainer(X_train, y_train, tune_hyperparameters=args.tune)
+                model = trainer(X_train, y_train, tune_hyperparameters=args.tune, config=config)
 
             # Evaluate model
             metrics = evaluate_model(model, X_test, y_test)
