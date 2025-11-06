@@ -1,0 +1,66 @@
+# Dockerfile for ML Application (Flask API)
+# This container serves the churn prediction API
+
+# Use official Python 3.12 slim image as base
+# 'slim' variant is smaller than the full image but includes necessary build tools
+FROM python:3.12-slim
+
+# Set metadata labels for the image
+LABEL maintainer="CMPT 2500 Course"
+LABEL description="Telecom Churn Prediction API"
+LABEL version="1.0"
+
+# Set working directory in the container
+WORKDIR /app
+
+# Set environment variables
+# PYTHONUNBUFFERED: Force Python to run in unbuffered mode (logs appear immediately)
+# PYTHONDONTWRITEBYTECODE: Prevent Python from writing .pyc files
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    LOG_DIR=/app/logs
+
+# Install system dependencies if needed
+# For this project, we don't need additional system packages
+# but this is where you'd add them (e.g., libgomp1 for XGBoost on some systems)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements file first (for Docker layer caching)
+# If requirements.txt doesn't change, Docker will reuse this layer
+COPY requirements.txt .
+
+# Install Python dependencies
+# --no-cache-dir: Don't cache pip packages (saves space)
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code and necessary files
+COPY src/ src/
+COPY configs/ configs/
+COPY models/ models/
+COPY data/processed/ data/processed/
+
+# Create logs directory
+RUN mkdir -p /app/logs
+
+# Create a non-root user for security
+# Running as root in containers is a security risk
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port 5000 for the Flask API
+EXPOSE 5000
+
+# Health check to ensure the container is running correctly
+# Docker will periodically check this endpoint
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+# Command to run the application
+# Using python -m ensures proper module resolution
+CMD ["python", "-m", "src.app"]

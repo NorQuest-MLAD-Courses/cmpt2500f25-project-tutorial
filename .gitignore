@@ -249,11 +249,15 @@ mlflow.db-shm
 mlflow.db-wal
 .mlflow/
 *.mlflow
+# But allow Dockerfile.mlflow (it's a Dockerfile, not an MLflow artifact)
+!Dockerfile.mlflow
 
 
-# Logs
-logs/
-*.log
+# Logs (keep directory structure for Docker)
+logs/*.log
+logs/**/*.log
+# But keep the directory structure
+!logs/.gitkeep
 
 # Temporary files
 *.tmp

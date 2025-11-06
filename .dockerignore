@@ -1,0 +1,100 @@
+# .dockerignore - Exclude files from Docker build context
+# This file works like .gitignore but for Docker builds
+# Excluding unnecessary files makes builds faster and images smaller
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# DVC
+.dvc/
+.dvcignore
+*.dvc
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Jupyter Notebooks (not needed in production)
+notebooks/
+*.ipynb
+.ipynb_checkpoints/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation (not needed in runtime)
+*.md
+docs/
+assignments/
+
+# CI/CD
+.github/
+
+# Logs (will be generated in container)
+logs/
+*.log
+
+# MLflow runs (will be volume-mounted, not copied)
+mlruns/
+
+# Raw data (not needed by API, only processed data)
+data/raw/
+
+# Test files (not needed in production)
+tests/
+
+# Environment files (use .env.example instead)
+.env
+
+# Temporary files
+tmp/
+temp/
+scratch/
+
+# Makefile (not needed in container)
+Makefile
+
+# Docker files themselves
+Dockerfile*
+docker-compose*.yml
+.dockerignore

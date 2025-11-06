@@ -1,0 +1,2 @@
+# This directory will contain application logs when running in Docker
+# The .gitkeep file ensures the directory structure is preserved in git

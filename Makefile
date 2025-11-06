@@ -9,6 +9,8 @@ REQUIREMENTS = requirements.txt
 .PHONY: setup clean help test test-quick test-cov test-api data data-status
 .PHONY: train train-all train-fast mlflow api api-dev api-prep api-test-live
 .PHONY: all pipeline
+.PHONY: docker-build docker-up docker-down docker-logs docker-restart docker-clean
+.PHONY: docker-test docker-shell-app docker-shell-mlflow docker-ps
 
 # Default target
 help:
@@ -45,6 +47,18 @@ help:
 	@echo "Workflows:"
 	@echo "  all            - Run complete pipeline (data -> train -> mlflow)"
 	@echo "  pipeline       - Full pipeline with status messages"
+	@echo ""
+	@echo "Docker:"
+	@echo "  docker-build   - Build Docker images"
+	@echo "  docker-up      - Start containers with docker-compose"
+	@echo "  docker-down    - Stop and remove containers"
+	@echo "  docker-restart - Restart all containers"
+	@echo "  docker-logs    - View logs from all containers"
+	@echo "  docker-ps      - List running containers"
+	@echo "  docker-test    - Run tests in Docker container"
+	@echo "  docker-shell-app    - Open shell in API container"
+	@echo "  docker-shell-mlflow - Open shell in MLflow container"
+	@echo "  docker-clean   - Remove containers, images, and volumes"
 	@echo ""
 
 # Setup target: Create venv and install dependencies
@@ -166,3 +180,58 @@ pipeline:
 	@echo "Step 3/3: Pipeline complete!"
 	@echo "To view results, run: make mlflow"
 	@echo "To test API, first run: make api-prep && make api"
+
+# ============ Docker Targets ============
+
+docker-build:
+	@echo "Building Docker images..."
+	docker-compose build
+
+docker-up:
+	@echo "Starting containers with docker-compose..."
+	@echo "API will be available at http://localhost:5000"
+	@echo "MLflow UI will be available at http://localhost:5001"
+	docker-compose up -d
+	@echo ""
+	@echo "Containers started! Check status with: make docker-ps"
+	@echo "View logs with: make docker-logs"
+
+docker-down:
+	@echo "Stopping and removing containers..."
+	docker-compose down
+
+docker-restart:
+	@echo "Restarting containers..."
+	docker-compose restart
+
+docker-logs:
+	@echo "Viewing logs from all containers (Ctrl+C to exit)..."
+	docker-compose logs -f
+
+docker-ps:
+	@echo "Listing running containers..."
+	docker-compose ps
+
+docker-test:
+	@echo "Running tests in Docker container..."
+	docker-compose run --rm ml-app pytest tests/ -v
+
+docker-shell-app:
+	@echo "Opening shell in API container..."
+	docker-compose exec ml-app /bin/bash
+
+docker-shell-mlflow:
+	@echo "Opening shell in MLflow container..."
+	docker-compose exec mlflow /bin/bash
+
+docker-clean:
+	@echo "WARNING: This will remove all containers, images, and volumes!"
+	@echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
+	@sleep 5
+	@echo "Stopping containers..."
+	docker-compose down -v
+	@echo "Removing images..."
+	docker-compose down --rmi all
+	@echo "Pruning Docker system..."
+	docker system prune -f
+	@echo "Docker cleanup complete!"

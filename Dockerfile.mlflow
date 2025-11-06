@@ -1,0 +1,55 @@
+# Dockerfile for MLflow Tracking Server
+# This container runs the MLflow UI for experiment tracking
+
+# Use official Python 3.12 slim image as base
+FROM python:3.12-slim
+
+# Set metadata labels
+LABEL maintainer="CMPT 2500 Course"
+LABEL description="MLflow Tracking Server"
+LABEL version="1.0"
+
+# Set working directory
+WORKDIR /mlflow
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install MLflow and database backend
+# pymysql is included for potential MySQL backend (not used in this lab)
+RUN pip install --no-cache-dir mlflow==3.5.1 pymysql
+
+# Create directory for MLflow artifacts and metadata
+RUN mkdir -p /mlflow/mlruns /mlflow/artifacts
+
+# Create a non-root user
+RUN useradd -m -u 1000 mlflowuser && \
+    chown -R mlflowuser:mlflowuser /mlflow
+
+# Switch to non-root user
+USER mlflowuser
+
+# Expose the default MLflow UI port
+EXPOSE 5001
+
+# Health check for MLflow UI
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:5001/ || exit 1
+
+# Run MLflow server
+# --host 0.0.0.0: Listen on all network interfaces (required for Docker)
+# --port 5001: Use port 5001 (to avoid conflict with API on 5000)
+# --backend-store-uri: Where to store experiment metadata
+# --default-artifact-root: Where to store artifacts (models, plots, etc.)
+CMD ["mlflow", "server", \
+     "--host", "0.0.0.0", \
+     "--port", "5001", \
+     "--backend-store-uri", "file:///mlflow/mlruns", \
+     "--default-artifact-root", "file:///mlflow/artifacts"]

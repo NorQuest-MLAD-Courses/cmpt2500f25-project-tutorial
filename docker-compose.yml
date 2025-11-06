@@ -1,0 +1,109 @@
+version: '3.8'
+
+# Docker Compose configuration for multi-container ML application
+# This orchestrates the ML API and MLflow tracking server
+
+services:
+  # ML Application API Service
+  ml-app:
+    # Build configuration
+    build:
+      context: .
+      dockerfile: Dockerfile.mlapp
+
+    # Container name for easy identification
+    container_name: churn-api
+
+    # Port mapping: host_port:container_port
+    ports:
+      - "5000:5000"
+
+    # Environment variables
+    environment:
+      - PORT=5000
+      - FLASK_ENV=production
+      - LOG_DIR=/app/logs
+      - MLFLOW_TRACKING_URI=http://mlflow:5001
+
+    # Volume mounts for persistence and development
+    volumes:
+      # Mount models directory (read-only in production)
+      - ./models:/app/models:ro
+      # Mount processed data (read-only in production)
+      - ./data/processed:/app/data/processed:ro
+      # Mount logs for persistence
+      - ./logs:/app/logs
+      # Optional: Mount source code for development (uncomment for hot-reload)
+      # - ./src:/app/src
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Ensure MLflow starts before the API
+    depends_on:
+      - mlflow
+
+    # Connect to custom network
+    networks:
+      - ml-network
+
+    # Health check (overrides Dockerfile HEALTHCHECK for docker-compose)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # MLflow Tracking Server Service
+  mlflow:
+    # Build configuration
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+
+    # Container name for easy identification
+    container_name: mlflow-server
+
+    # Port mapping: host_port:container_port
+    ports:
+      - "5001:5001"
+
+    # Environment variables
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=file:///mlflow/mlruns
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=file:///mlflow/artifacts
+
+    # Volume mounts for persistence
+    volumes:
+      # Mount mlruns for experiment tracking persistence
+      - ./mlruns:/mlflow/mlruns
+      # Mount artifacts directory
+      - ./mlflow-artifacts:/mlflow/artifacts
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Connect to custom network
+    networks:
+      - ml-network
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+
+# Define custom network for inter-container communication
+networks:
+  ml-network:
+    driver: bridge
+    # This creates an internal network where containers can reach each other
+    # by service name (e.g., ml-app can reach mlflow at http://mlflow:5001)
+
+# Define named volumes (optional, we're using bind mounts above)
+volumes:
+  mlruns-data:
+  mlflow-artifacts-data:
