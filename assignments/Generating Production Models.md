@@ -10,35 +10,31 @@ In Lab 02, you learned how to use MLflow to track experiments. We will now run m
 
 ---
 
-## Step 0: Bug Fixes in `src/train.py`
+## Step 0: ✅ Bug Fixes Already Applied in `src/train.py`
 
-### Bug
+**Note**: The following bug fixes have already been applied to the codebase. This section is provided for reference to help you understand what was corrected.
 
-These lines in `src/train.py` (lines 448–450):
+### Bug Fix 1: Automatic Label Detection
 
-```python
-...
-'precision': precision_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0),
-'recall': recall_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0),
-'f1_score': f1_score(y_test, y_pred, average='binary', pos_label='Yes', zero_division=0)
-...
-```
-
-These are inconsistent with out data processing and specifically out use of `LabelEncoder` as that turns the label into numerical values, i.e., `0` and `1` here.
-
-We have to instead do:
+The `src/train.py` file now automatically detects whether labels are numeric or string and sets the `pos_label` parameter accordingly. The code uses the following logic (around lines 568-577):
 
 ```python
-...
-'precision': precision_score(y_test, y_pred, average='binary', pos_label=1, zero_division=0),
-'recall': recall_score(y_test, y_pred, average='binary', pos_label=1, zero_division=0),
-'f1_score': f1_score(y_test, y_pred, average='binary', pos_label=1, zero_division=0),
-...
+# Determine the positive label automatically
+unique_labels = np.unique(y_test)
+if len(unique_labels) > 0:
+    if np.issubdtype(unique_labels.dtype, np.number):
+        pos_label = 1  # For numeric labels (from LabelEncoder)
+    else:
+        pos_label = sorted(unique_labels)[-1]  # For string labels
+else:
+    pos_label = 1  # Default fallback
 ```
 
-### Unnecessary Step
+This fix ensures compatibility with our `LabelEncoder`, which converts labels to numeric values (`0` and `1`).
 
-The `src/train.py` saves models it produces which is now unnecessary since we use MLFlow to track experiments and the artifacts they produce. So we add:
+### Bug Fix 2: Optional Model Saving
+
+The `src/train.py` script now includes a `--no-save` / `--save` argument system to control whether models are saved locally. Since MLflow tracks all artifacts, local model saving is now **disabled by default**. The following has been added:
 
 ```python
 save_group = parser.add_mutually_exclusive_group()
@@ -57,15 +53,7 @@ save_group.add_argument(
 )
 ```
 
-We also change the unconditional behavior:
-
-```python
-model_path = save_model(model, model_name, args.output_dir)
-saved_paths[model_name] = model_path
-models[model_name] = model
-```
-
-to match with our added command-line argument:
+The code now conditionally saves models based on this argument (around lines 850-890):
 
 ```python
 model_path = None
@@ -73,39 +61,16 @@ if not args.no_save:
     model_path = save_model(model, model_name, args.output_dir)
     saved_paths[model_name] = model_path
 models[model_name] = model
-```
 
-and also make this:
-
-```python
-logger.info(f"Model saved: {model_path}")
-```
-
-conditional:
-
-```python
+# Conditional logging
 if model_path is not None:
     logger.info(f"Model saved: {model_path}")
+    mlflow.log_artifact(model_path, "local_models")
 else:
     logger.info("Model not saved to disk (default; use --save to enable)")
 ```
 
-and
-
-```python
-mlflow.log_artifact(model_path, "local_models")
-```
-
-to:
-
-```python
-if model_path is not None:
-    mlflow.log_artifact(model_path, "local_models")
-```
-
-We should also update other parts of code and documentation to handle this.
-
-Note that we set the default behavior should be set to **not save** models locally, unless explicitly asked for.
+**Default behavior**: Models are **not saved** locally unless you use the `--save` flag. All model artifacts are tracked in MLflow.
 
 ## Step 1: Ensure Your Environment is Ready
 
@@ -128,7 +93,7 @@ Note that we set the default behavior should be set to **not save** models local
     python -m src.preprocess --input data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv --output-dir data/processed --test-size 0.2
     ```
 
-### 1.1: 🛑 IMPORTANT: Setting Up DVC Credentials
+### 1.1: 🛑 **IMPORTANT**: Setting Up DVC Credentials
 
 Before you can run `dvc pull`, you may get an `Unable to locate credentials` error. This is because DVC does not have the "password" to access your DagsHub remote storage.
 
@@ -255,7 +220,9 @@ You are now ready for Lab 3! Your project must have the following files for the 
 
 ---
 
-**Model Generation Complete!** 🎊
+## Congratulations! 🎊
+
+**Model Generation Complete!**
 
 You now have production models you can use for lab 3!
 
