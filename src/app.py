@@ -310,6 +310,21 @@ def make_prediction(json_data, model, model_version):
         # Convert to DataFrame
         input_df = pd.DataFrame(data_list)
 
+        # Ensure proper dtypes to avoid pandas inference issues
+        # SeniorCitizen must be int (it's categorical but stored as 0/1)
+        if 'SeniorCitizen' in input_df.columns:
+            input_df['SeniorCitizen'] = input_df['SeniorCitizen'].astype(int)
+
+        # Ensure numerical features are numeric types
+        for col in NUMERICAL_FEATURES:
+            if col in input_df.columns:
+                input_df[col] = pd.to_numeric(input_df[col], errors='coerce').fillna(0.0)
+
+        # Ensure categorical features (except SeniorCitizen) are strings
+        for col in CATEGORICAL_FEATURES:
+            if col in input_df.columns and col != 'SeniorCitizen':
+                input_df[col] = input_df[col].astype(str)
+
         # Reorder columns to match pipeline's training order
         input_df = input_df[REQUIRED_FEATURES]
 

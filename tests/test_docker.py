@@ -15,6 +15,16 @@ import requests
 import os
 
 
+# ============ Configuration ============
+
+# Allow port configuration via environment variable
+API_PORT = os.getenv("API_PORT", "5000")
+MLFLOW_PORT = os.getenv("MLFLOW_PORT", "5001")
+
+API_BASE_URL = f"http://localhost:{API_PORT}"
+MLFLOW_BASE_URL = f"http://localhost:{MLFLOW_PORT}"
+
+
 # ============ Helper Functions ============
 
 def run_command(cmd, check=True, capture_output=True):
@@ -74,9 +84,9 @@ def docker_environment():
         pytest.fail(f"Docker compose up failed: {up_result.stderr}")
 
     # Wait for services to be ready
-    print("Waiting for services to be ready...")
-    api_ready = wait_for_service("http://localhost:5000/health", timeout=60)
-    mlflow_ready = wait_for_service("http://localhost:5001/", timeout=60)
+    print(f"Waiting for services to be ready on ports {API_PORT} and {MLFLOW_PORT}...")
+    api_ready = wait_for_service(f"{API_BASE_URL}/health", timeout=60)
+    mlflow_ready = wait_for_service(f"{MLFLOW_BASE_URL}/", timeout=60)
 
     if not api_ready:
         # Print logs for debugging
@@ -117,14 +127,14 @@ def test_containers_are_running(docker_environment):
 
 def test_api_health_endpoint(docker_environment):
     """Test the API health check endpoint in Docker."""
-    response = requests.get("http://localhost:5000/health")
+    response = requests.get(f"{API_BASE_URL}/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
 
 def test_api_home_endpoint(docker_environment):
     """Test the API home/documentation endpoint in Docker."""
-    response = requests.get("http://localhost:5000/cmpt2500f25_tutorial_home")
+    response = requests.get(f"{API_BASE_URL}/cmpt2500f25_tutorial_home")
     assert response.status_code == 200
     data = response.json()
     assert "message" in data
@@ -156,7 +166,7 @@ def test_api_prediction_v1(docker_environment):
     }
 
     response = requests.post(
-        "http://localhost:5000/v1/predict",
+        f"{API_BASE_URL}/v1/predict",
         json=payload
     )
 
@@ -194,7 +204,7 @@ def test_api_prediction_v2(docker_environment):
     }
 
     response = requests.post(
-        "http://localhost:5000/v2/predict",
+        f"{API_BASE_URL}/v2/predict",
         json=payload
     )
 
@@ -214,7 +224,7 @@ def test_api_validation_error(docker_environment):
     }
 
     response = requests.post(
-        "http://localhost:5000/v1/predict",
+        f"{API_BASE_URL}/v1/predict",
         json=invalid_payload
     )
 
@@ -226,7 +236,7 @@ def test_api_validation_error(docker_environment):
 
 def test_mlflow_ui_accessible(docker_environment):
     """Test that MLflow UI is accessible."""
-    response = requests.get("http://localhost:5001/")
+    response = requests.get(f"{MLFLOW_BASE_URL}/")
     assert response.status_code == 200
     # MLflow UI returns HTML
     assert "MLflow" in response.text or "mlflow" in response.text
