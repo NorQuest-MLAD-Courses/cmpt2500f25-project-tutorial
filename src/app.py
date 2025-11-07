@@ -307,8 +307,15 @@ def make_prediction(json_data, model, model_version):
 
     # If validation passes for all, proceed with prediction
     try:
+        # DEBUG: Log data before DataFrame creation
+        logger.info(f"DEBUG: data_list[0] types: {[(k, type(v).__name__, v) for k, v in data_list[0].items()]}")
+
         # Convert to DataFrame
         input_df = pd.DataFrame(data_list)
+
+        # DEBUG: Log DataFrame dtypes
+        logger.info(f"DEBUG: DataFrame dtypes: {input_df.dtypes.to_dict()}")
+        logger.info(f"DEBUG: SeniorCitizen values: {input_df['SeniorCitizen'].tolist() if 'SeniorCitizen' in input_df.columns else 'NOT FOUND'}")
 
         # Ensure proper dtypes to avoid pandas inference issues
         # SeniorCitizen must be int (it's categorical but stored as 0/1)
