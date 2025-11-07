@@ -325,18 +325,33 @@ def make_prediction(json_data, model, model_version):
         # Ensure numerical features are numeric types
         for col in NUMERICAL_FEATURES:
             if col in input_df.columns:
-                input_df[col] = pd.to_numeric(input_df[col], errors='coerce').fillna(0.0)
+                try:
+                    input_df[col] = pd.to_numeric(input_df[col], errors='coerce').fillna(0.0)
+                except Exception as e:
+                    logger.error(f"DEBUG: Error converting {col} to numeric: {e}")
+                    raise
 
         # Ensure categorical features (except SeniorCitizen) are strings
         for col in CATEGORICAL_FEATURES:
             if col in input_df.columns and col != 'SeniorCitizen':
-                input_df[col] = input_df[col].astype(str)
+                try:
+                    input_df[col] = input_df[col].astype(str)
+                except Exception as e:
+                    logger.error(f"DEBUG: Error converting {col} to string: {e}")
+                    raise
 
         # Reorder columns to match pipeline's training order
         input_df = input_df[REQUIRED_FEATURES]
 
+        logger.info(f"DEBUG: About to call pipeline.transform(), df shape: {input_df.shape}, dtypes: {input_df.dtypes.to_dict()}")
+
         # Preprocess the data
-        processed_input = pipeline.transform(input_df)
+        try:
+            processed_input = pipeline.transform(input_df)
+            logger.info(f"DEBUG: pipeline.transform() succeeded, output shape: {processed_input.shape}")
+        except Exception as e:
+            logger.error(f"DEBUG: pipeline.transform() failed: {e}")
+            raise
 
         # Make prediction
         prediction_numeric = model.predict(processed_input)
