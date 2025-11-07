@@ -269,9 +269,185 @@ We'll cover cleanup commands at the end of the lab.
 
 #### Docker and Port Conflicts
 
-Docker containers expose ports (e.g., 5000 for your API, 5001 for MLflow). If you're already running services on these ports (like a local Flask app or MLflow UI), you'll get a "port already in use" error.
+Docker containers expose ports (e.g., 5000 for your API, 5001 for MLflow). If you're already running services on these ports (like a local Flask app or MLflow UI), you'll get a "port already in use" error when trying to start your containers.
 
-**Solution**: Stop any local services before running Docker containers, or change the host port mapping in `docker-compose.yml` (we'll cover this in Task 6).
+**Common Error Message**:
+```
+Error response from daemon: Ports are not available: exposing port TCP 0.0.0.0:5000 -> 127.0.0.1:0: listen tcp 0.0.0.0:5000: bind: address already in use
+```
+
+**Common Culprits**:
+- A local Flask app already running
+- MLflow UI running locally
+- macOS AirPlay Receiver (common on macOS Monterey+)
+- Windows services or other applications
+
+### Troubleshooting Port Conflicts
+
+#### Step 1: Find What's Using the Port
+
+**On macOS or Linux**:
+```sh
+lsof -i :5000
+```
+
+**Expected Output**:
+```
+COMMAND    PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+Python    12345  user    4u  IPv4 0x123456789      0t0  TCP *:5000 (LISTEN)
+```
+
+The `PID` column shows the process ID, and `COMMAND` shows what program is using the port.
+
+**On Windows (PowerShell or Command Prompt)**:
+```sh
+netstat -ano | findstr :5000
+```
+
+**Expected Output**:
+```
+TCP    0.0.0.0:5000           0.0.0.0:0              LISTENING       12345
+```
+
+The last number (12345) is the PID.
+
+#### Step 2: Choose a Solution
+
+You have three options to resolve port conflicts:
+
+---
+
+##### **Option 1: Stop the Conflicting Service (Recommended)**
+
+This is the cleanest solution if you don't need the other service running.
+
+**If it's a Python/Flask process**:
+
+1. Find the PID from Step 1 above
+2. Kill the process:
+
+   **macOS/Linux**:
+   ```sh
+   kill -9 12345  # Replace 12345 with your actual PID
+   ```
+
+   **Windows**:
+   ```sh
+   taskkill /F /PID 12345  # Replace 12345 with your actual PID
+   ```
+
+3. Try starting Docker containers again:
+   ```sh
+   docker-compose up -d
+   ```
+
+**If it's macOS AirPlay Receiver**:
+
+On macOS Monterey and later, the AirPlay Receiver feature uses port 5000 by default.
+
+1. Go to **System Settings** (or **System Preferences** on older macOS)
+2. Navigate to **General** → **AirDrop & Handoff**
+3. Turn **off** "AirPlay Receiver"
+4. Try starting Docker containers again
+
+**If it's a system service you need to keep running**:
+
+In this case, use Option 2 or Option 3 below instead of stopping the service.
+
+---
+
+##### **Option 2: Use a Different Port in Docker Compose (Quick Fix)**
+
+If you need to keep the service running on port 5000, you can map your Docker container to a different host port.
+
+1. **Edit `docker-compose.yml`**:
+
+   Find the `ml-app` service section:
+   ```yaml
+   ml-app:
+     ...
+     ports:
+       - "5000:5000"  # ← Change this line
+   ```
+
+   Change the **first** number (host port) to something else, like 5002:
+   ```yaml
+   ml-app:
+     ...
+     ports:
+       - "5002:5000"  # Host port 5002, container port 5000
+   ```
+
+   This means:
+   - Your container still listens on port 5000 internally
+   - But you access it from your host machine on port 5002
+
+2. **Start containers**:
+   ```sh
+   docker-compose up -d
+   ```
+
+3. **Access the API at the new port**:
+   ```sh
+   curl http://localhost:5002/health  # Note: 5002 instead of 5000
+   ```
+
+**Don't forget**: If you change the port, you'll need to use the new port for all API requests and tests!
+
+---
+
+##### **Option 3: Stop All Docker Containers First**
+
+If you had Docker containers running before and they didn't shut down cleanly, they might still be holding the port.
+
+```sh
+# Stop and remove all containers
+docker-compose down
+
+# Check if any containers are still running
+docker ps -a
+
+# If you see containers, force remove them
+docker rm -f $(docker ps -aq)
+
+# Try starting again
+docker-compose up -d
+```
+
+---
+
+#### Step 3: Verify Containers Started Successfully
+
+After resolving the port conflict, verify your containers are running:
+
+```sh
+docker-compose ps
+```
+
+**Expected Output**:
+```
+NAME            STATE    PORTS
+churn-api       Up       0.0.0.0:5000->5000/tcp
+mlflow-server   Up       0.0.0.0:5001->5001/tcp
+```
+
+If you see "Up" status for both containers, you're good to go!
+
+#### 💡 Pro Tip: Check Ports Before Starting
+
+Before running `docker-compose up`, you can proactively check if ports are available:
+
+**macOS/Linux**:
+```sh
+lsof -i :5000 && echo "Port 5000 is in use!" || echo "Port 5000 is available"
+lsof -i :5001 && echo "Port 5001 is in use!" || echo "Port 5001 is available"
+```
+
+**Windows**:
+```sh
+netstat -ano | findstr :5000 && echo Port 5000 is in use || echo Port 5000 is available
+netstat -ano | findstr :5001 && echo Port 5001 is in use || echo Port 5001 is available
+```
 
 #### Docker in Codespaces vs. Local
 
