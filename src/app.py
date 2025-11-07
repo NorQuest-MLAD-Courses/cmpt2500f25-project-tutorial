@@ -134,6 +134,7 @@ def home():
             "description": "A JSON object (or list of objects) with all 19 features.",
             "numerical_features": NUMERICAL_FEATURES,
             "categorical_features": CATEGORICAL_FEATURES,
+            "note": "SeniorCitizen accepts both integer (0/1) and string ('No'/'Yes') formats",
             "example_single_record": {
                 "tenure": 12,
                 "MonthlyCharges": 59.95,
@@ -144,7 +145,7 @@ def home():
                 "TechSupport": "No",
                 "InternetService": "DSL",
                 "gender": "Female",
-                "SeniorCitizen": "No",
+                "SeniorCitizen": 0,
                 "Partner": "Yes",
                 "Dependents": "No",
                 "PhoneService": "Yes",
@@ -154,14 +155,66 @@ def home():
                 "DeviceProtection": "No",
                 "StreamingTV": "No",
                 "StreamingMovies": "No"
+            },
+            "example_alternative_senior_citizen": {
+                "note": "SeniorCitizen can also be 'Yes' or 'No' (string)",
+                "SeniorCitizen": "No"
             }
         }
     })
+
+def normalize_senior_citizen(data):
+    """
+    Normalize SeniorCitizen to the format expected by the preprocessing pipeline.
+
+    The pipeline expects SeniorCitizen as 0 or 1 (integer), but for user convenience,
+    we accept both formats:
+    - Integer: 0 or 1
+    - String: "No" or "Yes" (case-insensitive)
+
+    Args:
+        data (dict): Customer data dictionary
+
+    Returns:
+        dict: Data with SeniorCitizen normalized to 0 or 1
+
+    Raises:
+        ValueError: If SeniorCitizen has an invalid value
+    """
+    if 'SeniorCitizen' in data:
+        value = data['SeniorCitizen']
+
+        # If it's already an integer, validate it's 0 or 1
+        if isinstance(value, int):
+            if value not in [0, 1]:
+                raise ValueError(f"SeniorCitizen must be 0 or 1, got {value}")
+            # Already correct format
+            return data
+
+        # If it's a string, convert "No"/"Yes" to 0/1
+        elif isinstance(value, str):
+            value_lower = value.lower().strip()
+            if value_lower == "no":
+                data['SeniorCitizen'] = 0
+            elif value_lower == "yes":
+                data['SeniorCitizen'] = 1
+            else:
+                raise ValueError(f"SeniorCitizen must be 'Yes', 'No', 0, or 1, got '{value}'")
+            return data
+
+        else:
+            raise ValueError(f"SeniorCitizen must be string or int, got {type(value).__name__}")
+
+    return data
+
 
 def validate_input(data):
     """
     Validates the input data to ensure it has all required features
     and correct data types.
+
+    Note: SeniorCitizen accepts both integer (0/1) and string ("No"/"Yes") formats
+    for user convenience, and is automatically normalized to integer format.
 
     Args:
         data (dict): Customer data dictionary
@@ -176,6 +229,14 @@ def validate_input(data):
         logger.warning(f"Validation failed: {error_msg}")
         return error_msg, 400
 
+    # Normalize SeniorCitizen before validation (accepts both 0/1 and "No"/"Yes")
+    try:
+        data = normalize_senior_citizen(data)
+    except ValueError as e:
+        error_msg = str(e)
+        logger.warning(f"Validation failed: {error_msg}")
+        return error_msg, 400
+
     # Check data types
     for feature in NUMERICAL_FEATURES:
         if not isinstance(data[feature], (int, float)):
@@ -186,14 +247,19 @@ def validate_input(data):
             logger.warning(f"Validation failed: {error_msg}")
             return error_msg, 400
 
+    # Check categorical features (excluding SeniorCitizen which was already normalized)
     for feature in CATEGORICAL_FEATURES:
-        if not isinstance(data[feature], str):
-            # In preprocess.py, SeniorCitizen (0/1) is mapped to "No"/"Yes".
-            # The pipeline is trained on the string "No"/"Yes".
-            # Our API validation must therefore expect a string.
-            error_msg = f"Invalid type for {feature}: expected str, got {type(data[feature]).__name__}"
-            logger.warning(f"Validation failed: {error_msg}")
-            return error_msg, 400
+        if feature == 'SeniorCitizen':
+            # SeniorCitizen is now normalized to int (0 or 1)
+            if not isinstance(data[feature], int):
+                error_msg = f"Invalid type for {feature}: expected int after normalization, got {type(data[feature]).__name__}"
+                logger.warning(f"Validation failed: {error_msg}")
+                return error_msg, 400
+        else:
+            if not isinstance(data[feature], str):
+                error_msg = f"Invalid type for {feature}: expected str, got {type(data[feature]).__name__}"
+                logger.warning(f"Validation failed: {error_msg}")
+                return error_msg, 400
 
     return None, 200 # No error
 
