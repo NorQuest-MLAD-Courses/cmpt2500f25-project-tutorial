@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+
+# DVC
+.dvc
+*.dvc
+
+# Python
+*.pyc
+__pycache__
+*.pyo
+*.pyd
+.Python
+*.egg-info
+.eggs
+*.egg
+
+# Virtual environments
+.venv
+venv
+env
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov
+coverage.xml
+*.cover
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Output directories
+outputs/
+mlruns/
+
+# Notebooks (not needed in container)
+notebooks/
+
+# Tests (not needed in production container)
+tests/
+
+# Documentation
+*.md
+!README.md
+
+# Build files
+Makefile
+
+# Logs (will be mounted as volume)
+logs/
+*.log

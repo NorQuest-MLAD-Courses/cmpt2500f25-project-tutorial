@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # ML Application - Flask Prediction API
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlapp
+    container_name: ml-api
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - LOG_DIR=/app/logs
+      - MLFLOW_TRACKING_URI=http://mlflow:5001
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - ml-network
+    depends_on:
+      - mlflow
+    restart: unless-stopped
+
+  # MLflow Tracking Server
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: mlflow
+    ports:
+      - "5001:5001"
+    volumes:
+      - mlflow-data:/mlflow
+    networks:
+      - ml-network
+    restart: unless-stopped
+
+networks:
+  ml-network:
+    driver: bridge
+
+volumes:
+  mlflow-data:
+    driver: local

@@ -249,6 +249,7 @@ mlflow.db-shm
 mlflow.db-wal
 .mlflow/
 *.mlflow
+!Dockerfile.mlflow
 
 
 # Logs
