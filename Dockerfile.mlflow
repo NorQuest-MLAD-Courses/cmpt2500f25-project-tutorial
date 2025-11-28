@@ -6,25 +6,22 @@ FROM python:3.12-slim
 # Set working directory
 WORKDIR /mlflow
 
-# Install MLflow and database drivers
-RUN pip install --no-cache-dir \
-    mlflow==2.17.2 \
-    pymysql \
-    psycopg2-binary
+# Install MLflow
+RUN pip install --no-cache-dir mlflow==2.17.2
 
-# Create directories for artifacts and backend store
-RUN mkdir -p /mlflow/artifacts /mlflow/mlruns
+# Create directories for artifacts and backend store with proper permissions
+RUN mkdir -p /mlflow/artifacts /mlflow/mlruns && \
+    chmod -R 777 /mlflow
 
 # Set environment variables
-ENV MLFLOW_BACKEND_STORE_URI=sqlite:///mlflow/mlflow.db
 ENV MLFLOW_DEFAULT_ARTIFACT_ROOT=/mlflow/artifacts
 
 # Expose the MLflow UI port
 EXPOSE 5001
 
-# Run MLflow server
+# Run MLflow server with file-based backend store (simpler and more reliable)
 CMD ["mlflow", "server", \
      "--host", "0.0.0.0", \
      "--port", "5001", \
-     "--backend-store-uri", "sqlite:///mlflow/mlflow.db", \
+     "--backend-store-uri", "/mlflow/mlruns", \
      "--default-artifact-root", "/mlflow/artifacts"]
