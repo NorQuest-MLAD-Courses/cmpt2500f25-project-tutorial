@@ -1,26 +1,28 @@
 # Lab 05 Fix Summary
 
-This document summarizes the issues found and fixes applied to make the Lab 05 Prometheus/Grafana monitoring work correctly.
+This document summarizes the issues found and fixes applied to make Lab 05 (Prometheus/Grafana monitoring) work correctly.
 
-## Issues Found
+---
 
-### Issue 1: Validation Errors Not Counted in Metrics
+## Issues Found and Fixed
+
+### Issue 1: Validation Errors Not Counted in Metrics (Critical)
 
 **Problem**: The `ml_predictions_total` counter was only incremented for:
 - Successful predictions (in the `try` block)
 - Exceptions during prediction (in the `except` block)
 
-However, validation errors (HTTP 400 responses) returned **before** the try/except block, so they were never counted. This meant:
+Validation errors (HTTP 400 responses) returned **before** the try/except block, so they were never counted. This caused:
 - Sending invalid data didn't increment error metrics
 - The `DemoHighErrorCount` alert could never fire
 - Error rate calculations were incorrect
 
 **Location**: `src/app.py`, `make_prediction()` function
 
-**Fix**: Added metric recording for validation errors and missing input:
+**Fix**: Added metric recording for all error paths:
 
 ```python
-# For missing input (line 264-272)
+# For missing input
 if json_data is None:
     prediction_counter.labels(
         model_version=model_version,
@@ -29,8 +31,7 @@ if json_data is None:
     ).inc()
     return {"error": "No input data provided"}, 400
 
-# For validation errors (line 289-297)
-error_msg, status_code = validate_input(item)
+# For validation errors
 if error_msg:
     prediction_counter.labels(
         model_version=model_version,
@@ -42,97 +43,56 @@ if error_msg:
 
 ### Issue 2: Dashboard JSON Syntax Error
 
-**Problem**: The Grafana dashboard JSON file had a missing comma after the first panel's datasource configuration:
+**Problem**: Missing comma in `grafana/dashboards/ml-api-dashboards.json` line 11, and inconsistent datasource UID (`"PBFA97CFB590B2093"` vs `"prometheus"`).
 
-```json
-"datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"}
-"fieldConfig": {
+**Fix**: Added missing comma and standardized UID to `"prometheus"`.
+
+### Issue 3: Missing HighLatency Alert
+
+**Problem**: The `HighLatency` alert was documented but not in the actual `alerts.yml` file.
+
+**Fix**: Added the alert to `prometheus/rules/alerts.yml`:
+
+```yaml
+- alert: HighLatency
+  expr: |
+    histogram_quantile(0.95, sum(rate(ml_prediction_duration_seconds_bucket[2m])) by (le)) > 0.5
+  for: 1m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High prediction latency"
+    description: "95th percentile latency exceeds 500ms."
 ```
 
-This JSON syntax error could cause the dashboard to fail to load.
-
-**Location**: `grafana/dashboards/ml-api-dashboards.json`, line 11
-
-**Fix**: Added missing comma and standardized the datasource UID:
-
-```json
-"datasource": {"type": "prometheus", "uid": "prometheus"},
-"fieldConfig": {
-```
-
-### Issue 3: Inconsistent Datasource UIDs
-
-**Problem**: The first panel used `"uid": "PBFA97CFB590B2093"` while other panels used `"uid": "prometheus"`. This inconsistency could cause some panels to fail to query data.
-
-**Location**: `grafana/dashboards/ml-api-dashboards.json`, line 10
-
-**Fix**: Changed to use the standard `"prometheus"` UID that matches the datasource provisioning configuration.
-
-## Testing Verification
-
-After applying fixes, the following was verified on GitHub Codespaces:
-
-1. **Metrics Recording**: After sending 5 invalid requests:
-   ```
-   ml_predictions_total{model_version="v1",prediction_result="validation_error",status="error"} 5.0
-   ```
-
-2. **Alert Firing**: The `DemoHighErrorCount` alert fired successfully:
-   ```json
-   {
-     "alertname": "DemoHighErrorCount",
-     "state": "firing",
-     "value": "5e+00"
-   }
-   ```
-
-3. **Grafana Dashboard**: All panels displaying correctly:
-   - API Status: UP
-   - Total Predictions: Showing count
-   - Error Rate: Calculating correctly
-   - Active Alerts: Showing firing alerts
+---
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/app.py` | Added error metric recording for validation failures |
+| `src/app.py` | Added error metric recording for validation failures and missing input |
 | `grafana/dashboards/ml-api-dashboards.json` | Fixed JSON syntax and datasource UID |
-| `assignments/Lab 05 - Monitoring and Observability with Prometheus and Grafana.md` | Rewrote with better pedagogical structure |
+| `prometheus/rules/alerts.yml` | Added HighLatency alert, fixed descriptions |
+| `assignments/Lab 05 - *.md` | Rewrote documentation with better structure |
 
-## Key Learnings
+---
 
-1. **Always record metrics for ALL code paths** - Not just successes and exceptions, but also validation errors and early returns.
+## Verification
 
-2. **Test the complete flow** - The metrics looked correct in code review, but testing revealed they weren't actually being recorded for validation errors.
+After fixes, all components work correctly:
 
-3. **Check JSON syntax carefully** - A missing comma in a 150-line JSON file is easy to miss but breaks everything.
+1. **Metrics**: All error types recorded
+   ```
+   ml_predictions_total{status="error", prediction_result="validation_error"} 5.0
+   ```
 
-4. **Use consistent identifiers** - Datasource UIDs, service names, etc. should be consistent across all configuration files.
+2. **Alerts**: `DemoHighErrorCount` fires after 3+ errors
 
-## Commands Used for Testing
+3. **Dashboard**: All panels display data correctly
 
-```bash
-# Rebuild with code changes
-docker-compose up --build -d --force-recreate app
+---
 
-# Generate errors to trigger alert
-for i in {1..5}; do
-  curl -X POST http://localhost:5000/v1/predict \
-    -H "Content-Type: application/json" \
-    -d '{"invalid": "data"}'
-done
+## Key Learning
 
-# Verify metrics are recorded
-curl -s http://localhost:5000/metrics | grep ml_predictions_total
-
-# Check alerts are firing
-curl -s "http://localhost:9090/api/v1/alerts" | jq '.data.alerts'
-
-# Test successful prediction (note: SeniorCitizen must be "0" or "1")
-echo '{"tenure":12,"MonthlyCharges":59.95,"TotalCharges":720.50,"Contract":"One year","PaymentMethod":"Electronic check","OnlineSecurity":"No","TechSupport":"No","InternetService":"DSL","gender":"Female","SeniorCitizen":"0","Partner":"Yes","Dependents":"No","PhoneService":"Yes","MultipleLines":"No","PaperlessBilling":"Yes","OnlineBackup":"Yes","DeviceProtection":"No","StreamingTV":"No","StreamingMovies":"No"}' > /tmp/test.json
-
-curl -X POST http://localhost:5000/v1/predict \
-  -H "Content-Type: application/json" \
-  -d @/tmp/test.json
-```
+**Always record metrics for ALL code paths** - not just successes and exceptions, but also validation errors and early returns. If a code path can fail, it should increment the error counter.
