@@ -1,9 +1,15 @@
+import os
+import threading
+import time
+import logging
 import joblib
 import pandas as pd
+import psutil
+
 from flask import Flask, request, jsonify
 from flasgger import Swagger
-import os
-import logging
+from prometheus_flask_exporter import PrometheusMetrics
+from prometheus_client import Counter, Histogram, Gauge
 
 # Configure logging
 logging.basicConfig(
@@ -14,6 +20,44 @@ logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__)
+
+# --- Prometheus Monitoring ---
+# Initialize Prometheus metrics - this automatically exposes /metrics endpoint
+metrics = PrometheusMetrics(app)
+
+# Add application info as a metric
+metrics.info('app_info', 'ML API Information', version='1.0.0', app_name='churn-prediction-api')
+
+# Custom metrics for ML predictions
+prediction_counter = Counter(
+    'ml_predictions_total',
+    'Total number of predictions made',
+    ['model_version', 'prediction_result', 'status']
+)
+
+prediction_latency = Histogram(
+    'ml_prediction_duration_seconds',
+    'Time spent processing prediction requests',
+    ['model_version'],
+    buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
+)
+
+# System resource metrics
+memory_usage_gauge = Gauge('app_memory_usage_bytes', 'Memory usage of the application')
+cpu_usage_gauge = Gauge('app_cpu_usage_percent', 'CPU usage percentage')
+model_loaded_gauge = Gauge('model_loaded', 'Whether models are loaded', ['model_version'])
+
+
+def monitor_system_resources():
+    """Background thread to monitor system resources every 15 seconds."""
+    while True:
+        try:
+            process = psutil.Process(os.getpid())
+            memory_usage_gauge.set(process.memory_info().rss)
+            cpu_usage_gauge.set(process.cpu_percent(interval=1))
+        except Exception:
+            pass
+        time.sleep(15)
 
 # Configure Swagger for API documentation
 # We use a template to define the basic structure
@@ -52,6 +96,10 @@ try:
     model_v2 = joblib.load('models/model_v2.pkl')
 
     logger.info("✅ Models and pipelines loaded successfully.")
+    
+    # Track model loading status
+    model_loaded_gauge.labels(model_version='v1').set(1 if model_v1 else 0)
+    model_loaded_gauge.labels(model_version='v2').set(1 if model_v2 else 0)
 
 except FileNotFoundError as e:
     logger.error(f"❌ Error loading models: {e}")
@@ -210,6 +258,9 @@ def make_prediction(json_data, model, model_version):
     Returns:
         tuple: (response_dict, status_code)
     """
+
+    start_time = time.time()
+
     if json_data is None:
         logger.warning(f"{model_version}: No input data provided")
         return {"error": "No input data provided"}, 400
@@ -268,17 +319,33 @@ def make_prediction(json_data, model, model_version):
                 "model_version": model_version
             })
 
+        # Record metrics for successful predictions
+        for result in results:
+            prediction_counter.labels(
+                model_version=model_version,
+                prediction_result=result['prediction'],
+                status='success'
+            ).inc()
+
+        # Record latency
+        duration = time.time() - start_time
+        prediction_latency.labels(model_version=model_version).observe(duration)
+
         logger.info(f"{model_version}: Successfully generated {len(results)} prediction(s)")
 
         # Return single object if input was single, else return list
         return (results[0] if not is_batch else results), 200
 
     except Exception as e:
-        # Catch-all for other errors (e.g., preprocessing issues)
+        # Record failed prediction
+        prediction_counter.labels(
+            model_version=model_version,
+            prediction_result='error',
+            status='error'
+        ).inc()
         error_msg = f"An error occurred during prediction: {str(e)}"
         logger.error(f"{model_version}: {error_msg}")
         return {"error": error_msg}, 500
-
 
 @app.route('/v1/predict', methods=['POST'])
 def predict_v1():
@@ -512,8 +579,13 @@ def predict_v2():
 
 # --- 3. Run the App ---
 if __name__ == '__main__':
+    # Start system resource monitoring in background
+    monitor_thread = threading.Thread(target=monitor_system_resources, daemon=True)
+    monitor_thread.start()
+    logger.info("Started system resource monitoring thread")
+    
     # Get port from environment variable or default to 5000
     port = int(os.environ.get('PORT', 5000))
     # Set debug=True for development, which auto-reloads the server on code changes
     # Set host='0.0.0.0' to make the server accessible from outside the container
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=False)

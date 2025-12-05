@@ -1,0 +1,42 @@
+groups:
+  - name: ml_api_alerts
+    rules:
+      - alert: APIDown
+        expr: up{job="ml-api"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "ML API is down"
+          description: "The ML API has been unreachable for over 30 seconds."
+
+      - alert: HighErrorRate
+        expr: |
+          (sum(rate(ml_predictions_total{status="error"}[2m]))
+          / sum(rate(ml_predictions_total[2m]))) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High prediction error rate"
+          description: "Error rate exceeds 10%"
+
+  - name: lab_demo_alerts
+    rules:
+      - alert: DemoHighErrorCount
+        expr: sum(ml_predictions_total{status="error"}) >= 3
+        for: 10s
+        labels:
+          severity: demo
+        annotations:
+          summary: "[DEMO] Error threshold reached"
+          description: "At least 3 prediction errors have occurred"
+
+      - alert: DemoHighRequestRate
+        expr: sum(rate(ml_predictions_total[1m])) > 0.5
+        for: 30s
+        labels:
+          severity: demo
+        annotations:
+          summary: "[DEMO] High request rate detected"
+          description: "More than 0.5 requests per second"

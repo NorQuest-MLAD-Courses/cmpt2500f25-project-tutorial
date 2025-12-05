@@ -43,3 +43,8 @@ dvc-s3==3.2.2
 # API
 flask==3.0.3
 flasgger==0.9.7.1
+
+# Monitoring
+prometheus_client==0.21.0
+prometheus_flask_exporter==0.23.1
+psutil==6.1.0

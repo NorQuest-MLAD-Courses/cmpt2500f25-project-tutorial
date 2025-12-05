@@ -1,0 +1,26 @@
+# Prometheus Configuration for ML Application Monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Load alerting rules
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # ML Application API
+  - job_name: 'ml-api'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['app:5000']
+        labels:
+          service: 'ml-prediction-api'
+    metrics_path: /metrics

@@ -1,0 +1,152 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"}
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {"options": {"0": {"color": "red", "text": "DOWN"}}, "type": "value"},
+            {"options": {"1": {"color": "green", "text": "UP"}}, "type": "value"}
+          ],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "up{job=\"ml-api\"}", "refId": "A"}],
+      "title": "API Status",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+      "gridPos": {"h": 4, "w": 5, "x": 4, "y": 0},
+      "id": 2,
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "sum(ml_predictions_total) or vector(0)", "refId": "A"}],
+      "title": "Total Predictions",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.05}, {"color": "red", "value": 0.1}]},
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": {"h": 4, "w": 5, "x": 9, "y": 0},
+      "id": 3,
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "sum(rate(ml_predictions_total{status=\"error\"}[2m])) / sum(rate(ml_predictions_total[2m])) or vector(0)", "refId": "A"}],
+      "title": "Error Rate (2m)",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.25}, {"color": "red", "value": 0.5}]},
+          "unit": "s"
+        }
+      },
+      "gridPos": {"h": 4, "w": 5, "x": 14, "y": 0},
+      "id": 4,
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(ml_prediction_duration_seconds_bucket[2m])) by (le)) or vector(0)", "refId": "A"}],
+      "title": "P95 Latency",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}]}, "unit": "bytes"}},
+      "gridPos": {"h": 4, "w": 5, "x": 19, "y": 0},
+      "id": 5,
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "app_memory_usage_bytes or vector(0)", "refId": "A"}],
+      "title": "Memory Usage",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2, "showPoints": "never"},
+          "unit": "reqps"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "id": 6,
+      "options": {"legend": {"calcs": ["mean", "max", "last"], "displayMode": "table", "placement": "bottom"}},
+      "targets": [
+        {"expr": "sum(rate(ml_predictions_total[1m])) by (model_version)", "legendFormat": "{{model_version}}", "refId": "A"},
+        {"expr": "sum(rate(ml_predictions_total[1m]))", "legendFormat": "Total", "refId": "B"}
+      ],
+      "title": "Request Rate by Model Version",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2},
+          "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.25}, {"color": "red", "value": 0.5}]},
+          "unit": "s"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "id": 7,
+      "options": {"legend": {"calcs": ["mean", "max", "last"], "displayMode": "table", "placement": "bottom"}},
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum(rate(ml_prediction_duration_seconds_bucket[2m])) by (le))", "legendFormat": "p50", "refId": "A"},
+        {"expr": "histogram_quantile(0.95, sum(rate(ml_prediction_duration_seconds_bucket[2m])) by (le))", "legendFormat": "p95", "refId": "B"},
+        {"expr": "histogram_quantile(0.99, sum(rate(ml_prediction_duration_seconds_bucket[2m])) by (le))", "legendFormat": "p99", "refId": "C"}
+      ],
+      "title": "Prediction Latency Percentiles",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 12},
+      "id": 8,
+      "options": {"legend": {"displayMode": "table", "placement": "right", "values": ["value", "percent"]}, "pieType": "pie"},
+      "targets": [{"expr": "sum(ml_predictions_total) by (prediction_result)", "legendFormat": "{{prediction_result}}", "refId": "A"}],
+      "title": "Predictions by Result",
+      "type": "piechart"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 12},
+      "id": 9,
+      "options": {"legend": {"displayMode": "table", "placement": "right", "values": ["value", "percent"]}, "pieType": "pie"},
+      "targets": [{"expr": "sum(ml_predictions_total) by (status)", "legendFormat": "{{status}}", "refId": "A"}],
+      "title": "Predictions by Status",
+      "type": "piechart"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 12},
+      "id": 10,
+      "options": {"alertInstanceLabelFilter": "", "dashboardAlerts": false, "maxItems": 20, "sortOrder": 1, "stateFilter": {"error": true, "firing": true, "noData": false, "normal": false, "pending": true}},
+      "title": "Active Alerts",
+      "type": "alertlist"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "tags": ["ml", "api", "monitoring"],
+  "templating": {"list": []},
+  "time": {"from": "now-15m", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "ML API Monitoring Dashboard",
+  "uid": "ml-api-monitoring",
+  "version": 1
+}
