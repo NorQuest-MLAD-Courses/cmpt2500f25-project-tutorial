@@ -263,6 +263,12 @@ def make_prediction(json_data, model, model_version):
 
     if json_data is None:
         logger.warning(f"{model_version}: No input data provided")
+        # Record missing input error in metrics
+        prediction_counter.labels(
+            model_version=model_version,
+            prediction_result='no_input',
+            status='error'
+        ).inc()
         return {"error": "No input data provided"}, 400
 
     # Handle empty list - return empty list
@@ -288,6 +294,12 @@ def make_prediction(json_data, model, model_version):
 
         error_msg, status_code = validate_input(item)
         if error_msg:
+            # Record validation error in metrics
+            prediction_counter.labels(
+                model_version=model_version,
+                prediction_result='validation_error',
+                status='error'
+            ).inc()
             return {"error": error_msg}, status_code
 
     # If validation passes for all, proceed with prediction
